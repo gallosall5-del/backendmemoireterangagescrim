@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Models\Personnel;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+
+/**
+ * Contrôleur CRUD pour le personnel de la DSP.
+ */
+class PersonnelController extends ApiController
+{
+    public function index(Request $request): JsonResponse
+    {
+        $query = Personnel::with('service.commune');
+
+        if ($request->has('search')) {
+            $query->search($request->search);
+        }
+        if ($request->has('statut')) {
+            $query->byStatut($request->statut);
+        }
+        if ($request->has('service_id')) {
+            $query->byService($request->service_id);
+        }
+        if ($request->has('grade')) {
+            $query->byGrade($request->grade);
+        }
+
+        $personnels = $query->orderBy('nom')
+            ->paginate($request->get('per_page', 15));
+
+        return $this->paginatedResponse($personnels);
+    }
+
+    public function show(Personnel $personnel): JsonResponse
+    {
+        $personnel->load(['service.commune.departement.region', 'user', 'media']);
+        return $this->successResponse($personnel);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'ccap' => 'required|string|max:50|unique:personnels,ccap',
+            'prenom' => 'required|string|max:255',
+            'nom' => 'required|string|max:255',
+            'grade' => 'nullable|string|max:100',
+            'telephone' => 'nullable|string|max:20',
+            'anciennete' => 'nullable|integer|min:0',
+            'date_entree_corps' => 'nullable|date',
+            'sexe' => 'required|in:M,F',
+            'situation_matrimoniale' => 'nullable|string|max:50',
+            'date_naissance' => 'nullable|date|before:today',
+            'lieu_naissance' => 'nullable|string|max:255',
+            'service_id' => 'required|exists:services,id',
+            'statut' => 'nullable|in:Actif,Inactif,Mission',
+            'sanction' => 'nullable|string',
+        ], [
+            'ccap.required' => 'Le CCAP est obligatoire.',
+            'ccap.unique' => 'Ce CCAP existe déjà.',
+            'prenom.required' => 'Le prénom est obligatoire.',
+            'nom.required' => 'Le nom est obligatoire.',
+            'sexe.required' => 'Le sexe est obligatoire.',
+            'service_id.required' => 'Le service est obligatoire.',
+            'service_id.exists' => 'Le service sélectionné n\'existe pas.',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        $personnel = Personnel::create($request->all());
+
+        return $this->successResponse($personnel->load('service'), 'Personnel créé avec succès.', 201);
+    }
+
+    public function update(Request $request, Personnel $personnel): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'ccap' => 'sometimes|string|max:50|unique:personnels,ccap,' . $personnel->id,
+            'prenom' => 'sometimes|string|max:255',
+            'nom' => 'sometimes|string|max:255',
+            'grade' => 'nullable|string|max:100',
+            'telephone' => 'nullable|string|max:20',
+            'anciennete' => 'nullable|integer|min:0',
+            'date_entree_corps' => 'nullable|date',
+            'sexe' => 'sometimes|in:M,F',
+            'situation_matrimoniale' => 'nullable|string|max:50',
+            'date_naissance' => 'nullable|date|before:today',
+            'lieu_naissance' => 'nullable|string|max:255',
+            'service_id' => 'sometimes|exists:services,id',
+            'statut' => 'sometimes|in:Actif,Inactif,Mission',
+            'sanction' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        $personnel->update($request->all());
+
+        return $this->successResponse($personnel->load('service'), 'Personnel mis à jour avec succès.');
+    }
+
+    public function destroy(Personnel $personnel): JsonResponse
+    {
+        $personnel->delete();
+        return $this->successResponse(null, 'Personnel supprimé avec succès.');
+    }
+}
