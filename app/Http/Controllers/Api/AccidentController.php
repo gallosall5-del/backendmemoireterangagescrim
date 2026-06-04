@@ -30,8 +30,16 @@ class AccidentController extends ApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Accident::with(['service', 'commune', 'user']);
+        $query = Accident::with(['service', 'commune', 'user'])->visibleByUser();
 
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('lieu', 'ILIKE', "%{$search}%")
+                  ->orWhere('cause_probable', 'ILIKE', "%{$search}%")
+                  ->orWhere('description', 'ILIKE', "%{$search}%");
+            });
+        }
         if ($request->has('type')) {
             $query->byType($request->type);
         }
@@ -65,6 +73,10 @@ class AccidentController extends ApiController
      */
     public function show(Accident $accident): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $accident)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $accident->load(['service', 'commune.departement.region', 'user', 'victimes', 'media']);
         return $this->successResponse($accident);
     }
@@ -143,6 +155,10 @@ class AccidentController extends ApiController
      */
     public function update(Request $request, Accident $accident): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $accident)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'type' => 'sometimes|in:matériel,corporel,mortel',
             'date' => 'sometimes|date',
@@ -180,6 +196,10 @@ class AccidentController extends ApiController
      */
     public function destroy(Accident $accident): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $accident)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $accident->delete();
         return $this->successResponse(null, 'Accident supprimé avec succès.');
     }

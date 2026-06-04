@@ -22,6 +22,10 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'telephone',
         'service_id',
+        'read_scope_type',
+        'read_scope_id',
+        'write_scope_type',
+        'write_scope_id',
         'is_active',
         'last_login_at',
     ];
@@ -38,6 +42,8 @@ class User extends Authenticatable implements JWTSubject
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'read_scope_type' => \App\Enums\ScopeType::class,
+            'write_scope_type' => \App\Enums\ScopeType::class,
         ];
     }
 

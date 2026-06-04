@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les infractions constatées ou déférées.
@@ -12,9 +13,10 @@ use App\Traits\Auditable;
  */
 class Infraction extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $fillable = [
+        'workflow_status',
         'type_infraction_id', 'service_id', 'annee', 'date', 'lieu',
         'commune_id', 'issue', 'type_drogue', 'unite', 'quantite',
         'latitude', 'longitude', 'description', 'user_id', 'sync_status',

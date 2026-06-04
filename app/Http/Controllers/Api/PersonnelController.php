@@ -14,7 +14,7 @@ class PersonnelController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Personnel::with('service.commune');
+        $query = Personnel::with('service.commune')->visibleByUser();
 
         if ($request->has('search')) {
             $query->search($request->search);
@@ -37,6 +37,10 @@ class PersonnelController extends ApiController
 
     public function show(Personnel $personnel): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $personnel)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $personnel->load(['service.commune.departement.region', 'user', 'media']);
         return $this->successResponse($personnel);
     }
@@ -79,6 +83,10 @@ class PersonnelController extends ApiController
 
     public function update(Request $request, Personnel $personnel): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $personnel)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'ccap' => 'sometimes|string|max:50|unique:personnels,ccap,' . $personnel->id,
             'prenom' => 'sometimes|string|max:255',
@@ -107,6 +115,10 @@ class PersonnelController extends ApiController
 
     public function destroy(Personnel $personnel): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $personnel)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $personnel->delete();
         return $this->successResponse(null, 'Personnel supprimé avec succès.');
     }

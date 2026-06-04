@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -75,27 +76,72 @@ class AuthController extends ApiController
         }
 
         $credentials = $request->only('email', 'password');
+        $ip          = $request->ip();
+        $email       = $credentials['email'];
+
+        // Vérifier le verrouillage (5 échecs en 15 minutes)
+        $recentFailures = DB::table('login_attempts')
+            ->where('email', $email)
+            ->where('success', false)
+            ->where('attempted_at', '>=', now()->subMinutes(15))
+            ->count();
+
+        if ($recentFailures >= 5) {
+            AuditLog::create([
+                'user_id'    => null,
+                'action'     => 'login_blocked',
+                'model_type' => User::class,
+                'model_id'   => null,
+                'new_values' => ['email' => $email, 'failures' => $recentFailures],
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse(
+                'Compte temporairement verrouillé suite à trop de tentatives. Réessayez dans 15 minutes.',
+                429
+            );
+        }
 
         // Vérifier que l'utilisateur est actif
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::where('email', $email)->first();
         if ($user && !$user->is_active) {
             return $this->errorResponse('Votre compte est désactivé. Contactez l\'administrateur.', 403);
         }
 
         if (!$token = JWTAuth::attempt($credentials)) {
-            // Journaliser la tentative de connexion échouée
+            // Enregistrer l'échec
+            DB::table('login_attempts')->insert([
+                'email'        => $email,
+                'ip_address'   => $ip,
+                'success'      => false,
+                'attempted_at' => now(),
+            ]);
+
             AuditLog::create([
-                'user_id' => null,
-                'action' => 'login_failed',
+                'user_id'    => null,
+                'action'     => 'login_failed',
                 'model_type' => User::class,
-                'model_id' => null,
-                'new_values' => ['email' => $credentials['email']],
-                'ip_address' => $request->ip(),
+                'model_id'   => null,
+                'new_values' => ['email' => $email, 'failures' => $recentFailures + 1],
+                'ip_address' => $ip,
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return $this->errorResponse('Identifiants incorrects.', 401);
+            $remaining = 4 - $recentFailures;
+            $msg = $remaining > 0
+                ? "Identifiants incorrects. {$remaining} tentative(s) restante(s) avant verrouillage."
+                : 'Identifiants incorrects. Compte verrouillé pour 15 minutes.';
+
+            return $this->errorResponse($msg, 401);
         }
+
+        // Succès — enregistrer et effacer les échecs précédents
+        DB::table('login_attempts')->insert([
+            'email'        => $email,
+            'ip_address'   => $ip,
+            'success'      => true,
+            'attempted_at' => now(),
+        ]);
 
         // Mettre à jour la dernière connexion
         $user = auth()->user();
@@ -213,6 +259,16 @@ class AuthController extends ApiController
         }
 
         $user->update(['password' => Hash::make($request->new_password)]);
+
+        AuditLog::create([
+            'user_id'    => $user->id,
+            'action'     => 'password_changed',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'new_values' => ['message' => 'Mot de passe modifié'],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         return $this->successResponse(null, 'Mot de passe modifié avec succès.');
     }

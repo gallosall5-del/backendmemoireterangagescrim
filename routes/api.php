@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\MediaController;
+use App\Http\Controllers\Api\SearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,7 +34,7 @@ use App\Http\Controllers\Api\AuditLogController;
 
 // ========== Authentification ==========
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
     Route::middleware('auth:api')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
@@ -121,8 +123,8 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
-        Route::put('/{notification}/read', [NotificationController::class, 'markAsRead']);
         Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::put('/{notification}/read', [NotificationController::class, 'markAsRead']);
         Route::post('/send', [NotificationController::class, 'send']);
     });
 
@@ -166,4 +168,17 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/', [AuditLogController::class, 'index']);
         Route::get('/{auditLog}', [AuditLogController::class, 'show']);
     });
+
+    // --- Recherche globale ---
+    Route::get('/search', [SearchController::class, 'search']);
+
+    // --- Médias (polymorphique) ---
+    // Upload / liste : POST|GET /api/{type}/{id}/media   (type = infractions|accidents|personnels|victimes)
+    Route::get('/{type}/{id}/media', [MediaController::class, 'index'])
+        ->where('type', 'infractions|accidents|personnels|victimes');
+    Route::post('/{type}/{id}/media', [MediaController::class, 'store'])
+        ->where('type', 'infractions|accidents|personnels|victimes');
+    // Téléchargement / suppression : GET|DELETE /api/media/{id}
+    Route::get('/media/{id}/download', [MediaController::class, 'download']);
+    Route::delete('/media/{id}', [MediaController::class, 'destroy']);
 });

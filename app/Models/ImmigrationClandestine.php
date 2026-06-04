@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les données de l'immigration clandestine.
@@ -12,11 +13,12 @@ use App\Traits\Auditable;
  */
 class ImmigrationClandestine extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $table = 'immigrations_clandestines';
 
     protected $fillable = [
+        'workflow_status',
         'nombre_interpellation', 'date', 'service_id',
         'nombre_hommes', 'nombre_femmes', 'nombre_enfants',
         'nombre_maries', 'nombre_celibataires',

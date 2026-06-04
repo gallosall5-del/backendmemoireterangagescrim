@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\NotificationInterne;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -16,7 +17,16 @@ class NotificationController extends ApiController
         if ($request->has('is_read')) $query->where('is_read', $request->boolean('is_read'));
         if ($request->has('type')) $query->byType($request->type);
 
-        return $this->paginatedResponse($query->orderByDesc('created_at')->paginate($request->get('per_page', 15)));
+        $paginated = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
+
+        // Normalise chaque notification pour que le frontend lise title/read_at
+        $paginated->getCollection()->transform(function ($n) {
+            $n->title = $n->titre;
+            $n->read_at = $n->is_read ? ($n->updated_at?->toISOString()) : null;
+            return $n;
+        });
+
+        return $this->paginatedResponse($paginated);
     }
 
     // Nombre de notifications non lues
@@ -43,19 +53,36 @@ class NotificationController extends ApiController
         return $this->successResponse(null, 'Toutes les notifications marquées comme lues.');
     }
 
-    // Envoyer une notification (admin)
+    // Envoyer une notification (admin) — user_id optionnel : si absent, diffusion globale
     public function send(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
-            'titre' => 'required|string|max:255',
+            'user_id' => 'nullable|exists:users,id',
+            'title'   => 'required|string|max:255',
             'message' => 'required|string',
-            'type' => 'nullable|in:alert,info,warning',
-            'canal' => 'nullable|in:ecran,email,sms',
+            'type'    => 'nullable|in:alert,info,warning,success,error',
+            'canal'   => 'nullable|in:ecran,email,sms',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $notification = NotificationInterne::create($request->all());
-        return $this->successResponse($notification, 'Notification envoyée.', 201);
+        $base = [
+            'titre'   => $request->title,
+            'message' => $request->message,
+            'type'    => $request->type ?? 'info',
+            'canal'   => $request->canal ?? 'ecran',
+            'is_read' => false,
+        ];
+
+        if ($request->filled('user_id')) {
+            $notification = NotificationInterne::create(array_merge($base, ['user_id' => $request->user_id]));
+            return $this->successResponse($notification, 'Notification envoyée.', 201);
+        }
+
+        // Diffusion globale : créer une entrée par utilisateur actif
+        $users = User::where('is_active', true)->pluck('id');
+        foreach ($users as $userId) {
+            NotificationInterne::create(array_merge($base, ['user_id' => $userId]));
+        }
+        return $this->successResponse(null, "Notification diffusée à {$users->count()} utilisateur(s).", 201);
     }
 }

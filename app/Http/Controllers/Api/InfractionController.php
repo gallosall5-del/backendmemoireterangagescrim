@@ -35,7 +35,7 @@ class InfractionController extends ApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune', 'user']);
+        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune.departement.region', 'user'])->visibleByUser();
 
         // Filtres
         if ($request->has('search')) {
@@ -83,6 +83,11 @@ class InfractionController extends ApiController
      */
     public function show(Infraction $infraction): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $infraction)) {
+            return $this->errorResponse('Accès territorial refusé pour cette ressource.', 403);
+        }
+
         $infraction->load([
             'typeInfraction.categorieInfraction',
             'service.commune',
@@ -180,6 +185,11 @@ class InfractionController extends ApiController
      */
     public function update(Request $request, Infraction $infraction): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $infraction)) {
+            return $this->errorResponse('Accès territorial refusé. Vous ne pouvez pas modifier cette donnée.', 403);
+        }
+
         // Vérifier la règle métier : modification autorisée seulement dans la 1ère minute
         $minutesSinceCreation = $infraction->created_at->diffInMinutes(now());
         if ($minutesSinceCreation > 1 && !auth()->user()->hasRole(['super_admin', 'admin'])) {
@@ -230,6 +240,11 @@ class InfractionController extends ApiController
      */
     public function destroy(Infraction $infraction): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $infraction)) {
+            return $this->errorResponse('Accès territorial refusé. Vous ne pouvez pas supprimer cette donnée.', 403);
+        }
+
         $infraction->delete();
         return $this->successResponse(null, 'Infraction supprimée avec succès.');
     }

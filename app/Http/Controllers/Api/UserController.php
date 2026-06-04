@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
+use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -54,6 +55,16 @@ class UserController extends ApiController
 
         $user->assignRole($request->role);
 
+        AuditLog::create([
+            'user_id'    => auth()->id(),
+            'action'     => 'user_created',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'new_values' => ['name' => $user->name, 'email' => $user->email, 'role' => $request->role],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
         return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur créé.', 201);
     }
 
@@ -73,8 +84,23 @@ class UserController extends ApiController
         $data = $request->except(['password', 'role']);
         if ($request->filled('password')) $data['password'] = Hash::make($request->password);
 
+        $oldRole = $user->getRoleNames()->first();
         $user->update($data);
-        if ($request->filled('role')) $user->syncRoles([$request->role]);
+        if ($request->filled('role')) {
+            $user->syncRoles([$request->role]);
+            if ($oldRole !== $request->role) {
+                AuditLog::create([
+                    'user_id'    => auth()->id(),
+                    'action'     => 'role_changed',
+                    'model_type' => User::class,
+                    'model_id'   => $user->id,
+                    'old_values' => ['role' => $oldRole],
+                    'new_values' => ['role' => $request->role],
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+            }
+        }
 
         return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur mis à jour.');
     }
@@ -84,6 +110,17 @@ class UserController extends ApiController
         if ($user->id === auth()->id()) {
             return $this->errorResponse('Vous ne pouvez pas supprimer votre propre compte.', 403);
         }
+
+        AuditLog::create([
+            'user_id'    => auth()->id(),
+            'action'     => 'user_deleted',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'old_values' => ['name' => $user->name, 'email' => $user->email],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
         $user->delete();
         return $this->successResponse(null, 'Utilisateur supprimé.');
     }

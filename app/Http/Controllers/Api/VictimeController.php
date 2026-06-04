@@ -14,7 +14,7 @@ class VictimeController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Victime::with(['infraction', 'accident']);
+        $query = Victime::with(['infraction', 'accident'])->visibleByUser();
 
         if ($request->has('infraction_id')) {
             $query->where('infraction_id', $request->infraction_id);
@@ -34,6 +34,10 @@ class VictimeController extends ApiController
 
     public function show(Victime $victime): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $victime)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $victime->load(['infraction.typeInfraction', 'accident']);
         return $this->successResponse($victime);
     }
@@ -67,6 +71,10 @@ class VictimeController extends ApiController
 
     public function update(Request $request, Victime $victime): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $victime)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'nom' => 'nullable|string|max:255',
             'prenom' => 'nullable|string|max:255',
@@ -89,6 +97,10 @@ class VictimeController extends ApiController
 
     public function destroy(Victime $victime): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $victime)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $victime->delete();
         return $this->successResponse(null, 'Victime supprimée avec succès.');
     }

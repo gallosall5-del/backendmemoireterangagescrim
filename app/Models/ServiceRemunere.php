@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les services rémunérés.
  */
 class ServiceRemunere extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $table = 'services_remuneres';
 

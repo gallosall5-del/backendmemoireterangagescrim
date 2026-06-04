@@ -31,12 +31,32 @@ class ExportController extends ApiController
      */
     public function infrationsPdf(Request $request)
     {
-        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune']);
+        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune'])->visibleByUser();
 
-        if ($request->has('annee')) $query->byAnnee($request->annee);
-        if ($request->has('service_id')) $query->byService($request->service_id);
-        if ($request->has('date_from') && $request->has('date_to')) {
-            $query->byDateRange($request->date_from, $request->date_to);
+        if ($request->filled('annee')) $query->byAnnee($request->annee);
+        if ($request->filled('service_id')) $query->byService($request->service_id);
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from') && $request->filled('date_to')) {
+                $query->byDateRange($request->date_from, $request->date_to);
+            } elseif ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            } else {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+        if ($request->filled('hour')) {
+            $query->whereHour('created_at', $request->hour);
+        }
+        if ($request->filled('commune_id')) {
+            $query->byCommune($request->commune_id);
+        } elseif ($request->filled('departement_id')) {
+            $query->whereHas('commune', function($q) use ($request) {
+                $q->where('departement_id', $request->departement_id);
+            });
+        } elseif ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', function($q) use ($request) {
+                $q->where('region_id', $request->region_id);
+            });
         }
 
         $infractions = $query->orderByDesc('date')->get();
@@ -63,11 +83,31 @@ class ExportController extends ApiController
      */
     public function accidentsPdf(Request $request)
     {
-        $query = Accident::with(['service', 'commune', 'victimes']);
+        $query = Accident::with(['service', 'commune', 'victimes'])->visibleByUser();
 
-        if ($request->has('type')) $query->byType($request->type);
-        if ($request->has('date_from') && $request->has('date_to')) {
-            $query->byDateRange($request->date_from, $request->date_to);
+        if ($request->filled('type')) $query->byType($request->type);
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from') && $request->filled('date_to')) {
+                $query->byDateRange($request->date_from, $request->date_to);
+            } elseif ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            } else {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+        if ($request->filled('hour')) {
+            $query->whereHour('created_at', $request->hour);
+        }
+        if ($request->filled('commune_id')) {
+            $query->byCommune($request->commune_id);
+        } elseif ($request->filled('departement_id')) {
+            $query->whereHas('commune', function($q) use ($request) {
+                $q->where('departement_id', $request->departement_id);
+            });
+        } elseif ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', function($q) use ($request) {
+                $q->where('region_id', $request->region_id);
+            });
         }
 
         $accidents = $query->orderByDesc('date')->get();
@@ -93,10 +133,33 @@ class ExportController extends ApiController
      */
     public function infractionsCsv(Request $request)
     {
-        $query = Infraction::with(['typeInfraction', 'service', 'commune']);
+        $query = Infraction::with(['typeInfraction', 'service', 'commune'])->visibleByUser();
 
-        if ($request->has('annee')) $query->byAnnee($request->annee);
-        if ($request->has('service_id')) $query->byService($request->service_id);
+        if ($request->filled('annee')) $query->byAnnee($request->annee);
+        if ($request->filled('service_id')) $query->byService($request->service_id);
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from') && $request->filled('date_to')) {
+                $query->byDateRange($request->date_from, $request->date_to);
+            } elseif ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            } else {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+        if ($request->filled('hour')) {
+            $query->whereHour('created_at', $request->hour);
+        }
+        if ($request->filled('commune_id')) {
+            $query->byCommune($request->commune_id);
+        } elseif ($request->filled('departement_id')) {
+            $query->whereHas('commune', function($q) use ($request) {
+                $q->where('departement_id', $request->departement_id);
+            });
+        } elseif ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', function($q) use ($request) {
+                $q->where('region_id', $request->region_id);
+            });
+        }
 
         $infractions = $query->orderByDesc('date')->get();
 
@@ -132,9 +195,32 @@ class ExportController extends ApiController
     // Export CSV des accidents
     public function accidentsCsv(Request $request)
     {
-        $query = Accident::with(['service', 'commune']);
+        $query = Accident::with(['service', 'commune'])->visibleByUser();
 
-        if ($request->has('type')) $query->byType($request->type);
+        if ($request->filled('type')) $query->byType($request->type);
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            if ($request->filled('date_from') && $request->filled('date_to')) {
+                $query->byDateRange($request->date_from, $request->date_to);
+            } elseif ($request->filled('date_from')) {
+                $query->where('date', '>=', $request->date_from);
+            } else {
+                $query->where('date', '<=', $request->date_to);
+            }
+        }
+        if ($request->filled('hour')) {
+            $query->whereHour('created_at', $request->hour);
+        }
+        if ($request->filled('commune_id')) {
+            $query->byCommune($request->commune_id);
+        } elseif ($request->filled('departement_id')) {
+            $query->whereHas('commune', function($q) use ($request) {
+                $q->where('departement_id', $request->departement_id);
+            });
+        } elseif ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', function($q) use ($request) {
+                $q->where('region_id', $request->region_id);
+            });
+        }
 
         $accidents = $query->orderByDesc('date')->get();
 

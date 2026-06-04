@@ -27,7 +27,7 @@ class ImmigrationClandestineController extends ApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ImmigrationClandestine::with(['service', 'user']);
+        $query = ImmigrationClandestine::with(['service', 'user'])->visibleByUser();
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('date_from') && $request->has('date_to')) $query->byDateRange($request->date_from, $request->date_to);
 
@@ -46,6 +46,10 @@ class ImmigrationClandestineController extends ApiController
      */
     public function show(ImmigrationClandestine $immigrationClandestine): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $immigrationClandestine)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         return $this->successResponse($immigrationClandestine->load(['service', 'user']));
     }
 
@@ -93,12 +97,20 @@ class ImmigrationClandestineController extends ApiController
 
     public function update(Request $request, ImmigrationClandestine $immigrationClandestine): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $immigrationClandestine)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $immigrationClandestine->update($request->all());
         return $this->successResponse($immigrationClandestine->load('service'), 'Mis à jour.');
     }
 
     public function destroy(ImmigrationClandestine $immigrationClandestine): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $immigrationClandestine)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $immigrationClandestine->delete();
         return $this->successResponse(null, 'Supprimé.');
     }

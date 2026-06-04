@@ -39,6 +39,9 @@ class SyncController extends ApiController
      */
     public function batch(Request $request): JsonResponse
     {
+        $user = auth()->user();
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+
         $validator = Validator::make($request->all(), [
             'infractions' => 'nullable|array',
             'infractions.*.type_infraction_id' => 'required|exists:type_infractions,id',
@@ -66,7 +69,18 @@ class SyncController extends ApiController
             // Synchroniser les infractions
             if ($request->has('infractions')) {
                 foreach ($request->infractions as $index => $data) {
-                    $data['user_id'] = auth()->id();
+                    if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
+                        \App\Models\AuditLog::create([
+                            'user_id' => $user->id,
+                            'action' => 'sync_violation',
+                            'model_type' => Infraction::class,
+                            'new_values' => ['commune_id' => $data['commune_id']],
+                            'ip_address' => $request->ip(),
+                        ]);
+                        throw new \Exception('Accès territorial refusé pour une infraction en commune ' . $data['commune_id']);
+                    }
+                    
+                    $data['user_id'] = $user->id;
                     $data['sync_status'] = 'synced';
                     $data['annee'] = date('Y', strtotime($data['date']));
                     Infraction::create($data);
@@ -77,7 +91,18 @@ class SyncController extends ApiController
             // Synchroniser les accidents
             if ($request->has('accidents')) {
                 foreach ($request->accidents as $data) {
-                    $data['user_id'] = auth()->id();
+                    if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
+                        \App\Models\AuditLog::create([
+                            'user_id' => $user->id,
+                            'action' => 'sync_violation',
+                            'model_type' => Accident::class,
+                            'new_values' => ['commune_id' => $data['commune_id']],
+                            'ip_address' => $request->ip(),
+                        ]);
+                        throw new \Exception('Accès territorial refusé pour un accident en commune ' . $data['commune_id']);
+                    }
+
+                    $data['user_id'] = $user->id;
                     $data['sync_status'] = 'synced';
                     Accident::create($data);
                     $results['accidents_synced']++;

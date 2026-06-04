@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,  // 3. Rôles et Permissions
             UserSeeder::class,            // 4. Utilisateurs de test
             InfractionTypeSeeder::class,  // 5. Catégories et Types d'infractions
+            DataSeeder::class,            // 6. Données réelles JSON (accidents, infractions, amendes)
         ]);
     }
 }

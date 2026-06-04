@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour le personnel de la DSP.
@@ -12,7 +13,7 @@ use App\Traits\Auditable;
  */
 class Personnel extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $fillable = [
         'ccap', 'prenom', 'nom', 'grade', 'telephone',

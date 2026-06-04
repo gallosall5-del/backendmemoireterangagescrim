@@ -11,7 +11,7 @@ class AmendePieceSaisieController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = AmendePieceSaisie::with(['service', 'user']);
+        $query = AmendePieceSaisie::with(['service', 'user'])->visibleByUser();
         if ($request->has('type')) $query->byType($request->type);
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('date_from') && $request->has('date_to')) $query->byDateRange($request->date_from, $request->date_to);
@@ -21,6 +21,10 @@ class AmendePieceSaisieController extends ApiController
 
     public function show(AmendePieceSaisie $amendePieceSaisie): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $amendePieceSaisie)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         return $this->successResponse($amendePieceSaisie->load(['service', 'user']));
     }
 
@@ -43,12 +47,28 @@ class AmendePieceSaisieController extends ApiController
 
     public function update(Request $request, AmendePieceSaisie $amendePieceSaisie): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $amendePieceSaisie)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
+        $validator = Validator::make($request->all(), [
+            'type'        => 'sometimes|in:Amende,Pièce saisie',
+            'service_id'  => 'sometimes|exists:services,id',
+            'date'        => 'sometimes|date',
+            'montant'     => 'sometimes|numeric|min:0',
+            'description' => 'nullable|string',
+        ]);
+        if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         $amendePieceSaisie->update($request->all());
         return $this->successResponse($amendePieceSaisie->load('service'), 'Mis à jour.');
     }
 
     public function destroy(AmendePieceSaisie $amendePieceSaisie): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $amendePieceSaisie)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $amendePieceSaisie->delete();
         return $this->successResponse(null, 'Supprimé.');
     }

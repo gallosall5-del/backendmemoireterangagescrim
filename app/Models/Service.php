@@ -13,7 +13,7 @@ class Service extends Model
 {
     use HasFactory, Auditable;
 
-    protected $fillable = ['nom', 'type', 'commune_id', 'adresse', 'telephone', 'email'];
+    protected $fillable = ['nom', 'type', 'commune_id', 'adresse', 'telephone', 'email', 'latitude', 'longitude'];
 
     // Un service appartient à une commune
     public function commune()

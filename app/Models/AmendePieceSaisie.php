@@ -5,17 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les amendes forfaitaires et pièces saisies.
  */
 class AmendePieceSaisie extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $table = 'amendes_pieces_saisies';
 
     protected $fillable = [
+        'workflow_status',
         'type', 'service_id', 'date', 'montant', 'description', 'user_id',
     ];
 

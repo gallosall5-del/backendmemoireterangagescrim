@@ -5,15 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les accidents de la circulation.
  */
 class Accident extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $fillable = [
+        'workflow_status',
         'type', 'date', 'lieu', 'commune_id', 'service_id',
         'moyen', 'cause_probable', 'latitude', 'longitude',
         'description', 'user_id', 'sync_status',

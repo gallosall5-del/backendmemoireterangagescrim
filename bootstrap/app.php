@@ -19,7 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Ajouter ici les middlewares globaux si nécessaire
+        $middleware->api(append: [
+            \App\Http\Middleware\CheckTerritorialAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Réponses d'erreur JSON pour les requêtes API

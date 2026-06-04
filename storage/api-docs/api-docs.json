@@ -20,6 +20,265 @@
         }
     ],
     "paths": {
+        "/api/accidents": {
+            "get": {
+                "tags": [
+                    "Accidents"
+                ],
+                "summary": "Liste des accidents de la circulation",
+                "operationId": "ea799341a618789de80410a54dc1bfb1",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "mat\\u00e9riel",
+                                "corporel",
+                                "mortel"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "service_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "commune_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste paginee",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Accidents"
+                ],
+                "summary": "Enregistrer un accident",
+                "operationId": "f18dbf00ffd5970d472428a991d61d86",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "type",
+                                    "date",
+                                    "lieu",
+                                    "commune_id",
+                                    "service_id"
+                                ],
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "example": "corporel",
+                                        "enum": [
+                                            "matériel",
+                                            "corporel",
+                                            "mortel"
+                                        ]
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-05-12"
+                                    },
+                                    "lieu": {
+                                        "type": "string",
+                                        "example": "Autoroute à péage, km 15"
+                                    },
+                                    "commune_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "service_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "moyen": {
+                                        "type": "string",
+                                        "example": "Véhicule"
+                                    },
+                                    "cause_probable": {
+                                        "type": "string",
+                                        "example": "Excès de vitesse"
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": 14.7228
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -17.4567
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Créé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/accidents/{id}": {
+            "get": {
+                "tags": [
+                    "Accidents"
+                ],
+                "summary": "Détail d'un accident",
+                "operationId": "71a701f71caa6c2aa9558952cff1ea2f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détail"
+                    },
+                    "404": {
+                        "description": "Introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Accidents"
+                ],
+                "summary": "Modifier un accident",
+                "operationId": "d8ad47c9a5c7cd933bb6c0b33d8c55bb",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mis à jour"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Accidents"
+                ],
+                "summary": "Supprimer un accident",
+                "operationId": "ba77db4bd83841bb379996bde65bba2f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Supprimé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "tags": [
@@ -102,9 +361,1438 @@
                     }
                 }
             }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Déconnexion",
+                "operationId": "0b366af9c6842623aab9c8827c519b89",
+                "responses": {
+                    "200": {
+                        "description": "Déconnexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Rafraîchir le token JWT",
+                "operationId": "1a1e54a850ca4218b0388d92093ab652",
+                "responses": {
+                    "200": {
+                        "description": "Token rafraîchi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Profil de l'utilisateur connecté",
+                "operationId": "4f405e33417b7b74565767c1a7b51231",
+                "responses": {
+                    "200": {
+                        "description": "Profil retourné",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/stats": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "KPIs globaux du tableau de bord",
+                "operationId": "654e1617f74d2b9e0654ec77620d960b",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mois",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 12,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "region_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "departement_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "commune_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "service_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statistiques retournées"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/infractions-par-region": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Infractions par région",
+                "operationId": "4372a6642330b2f060b8d4968edbb882",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mois",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Infractions groupées par région"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/accidents-par-type": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Accidents groupés par type",
+                "operationId": "2d599e8bbc5b8a3f97f111fcda065ae7",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mois",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Accidents par type"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/tendances-mensuelles": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Tendances mensuelles infractions et accidents",
+                "operationId": "44c64542dfee6fa89e077cda86f006c9",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mois",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Données mensuelles pour graphiques"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/export/infractions/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export PDF des infractions",
+                "operationId": "36d21e984e843b5fb50f0b76510685fb",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2025
+                        }
+                    },
+                    {
+                        "name": "service_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fichier PDF téléchargé",
+                        "content": {
+                            "application/pdf": {}
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/export/accidents/pdf": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export PDF des accidents",
+                "operationId": "dd2f177f6b3e5d4710ad4de6a7460b1f",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "matériel",
+                                "corporel",
+                                "mortel"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fichier PDF téléchargé",
+                        "content": {
+                            "application/pdf": {}
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/export/infractions/csv": {
+            "get": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Export CSV des infractions (compatible Excel)",
+                "operationId": "6062cc6417a9aabd5e7256c60768170f",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fichier CSV téléchargé",
+                        "content": {
+                            "text/csv": {}
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/export/import/json": {
+            "post": {
+                "tags": [
+                    "Export"
+                ],
+                "summary": "Importer des données depuis un fichier JSON",
+                "operationId": "ddc07150b6b349c06ab314f3026cea9d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "file": {
+                                        "description": "Fichier JSON max 10MB",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Import réussi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Fichier invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/immigrations-clandestines": {
+            "get": {
+                "tags": [
+                    "Immigration Clandestine"
+                ],
+                "summary": "Liste des interpellations pour immigration clandestine",
+                "operationId": "61db8ae602463eb4ccc10a913ac9e26f",
+                "parameters": [
+                    {
+                        "name": "service_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste paginee"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Immigration Clandestine"
+                ],
+                "summary": "Enregistrer une interpellation",
+                "operationId": "51be238fe71d096dd10a2de12c1731b9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImmigrationClandestine"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Enregistré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/immigrations-clandestines/{id}": {
+            "get": {
+                "tags": [
+                    "Immigration Clandestine"
+                ],
+                "summary": "Détail d'une interpellation",
+                "operationId": "c5719fc885b5ffa17b0ea2ca8597d572",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détail"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/infractions": {
+            "get": {
+                "tags": [
+                    "Infractions"
+                ],
+                "summary": "Liste des infractions",
+                "operationId": "6e55860eab55d36fa726adcdd973f5c6",
+                "parameters": [
+                    {
+                        "name": "annee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2025
+                        }
+                    },
+                    {
+                        "name": "service_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "commune_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "issue",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Constat\\u00e9e",
+                                "D\\u00e9f\\u00e9r\\u00e9e"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type_infraction_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sync_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "synced"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste paginee",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Infractions"
+                ],
+                "summary": "Enregistrer une infraction",
+                "description": "Crée une nouvelle infraction. Le champ sync_status peut être 'pending' pour les saisies offline.",
+                "operationId": "afd0a32797f783bca664f687618d42ab",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "type_infraction_id",
+                                    "service_id",
+                                    "annee",
+                                    "date",
+                                    "lieu",
+                                    "commune_id",
+                                    "issue"
+                                ],
+                                "properties": {
+                                    "type_infraction_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "service_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "annee": {
+                                        "type": "integer",
+                                        "example": 2025
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-05-12"
+                                    },
+                                    "lieu": {
+                                        "type": "string",
+                                        "example": "Marché Sandaga, Dakar"
+                                    },
+                                    "commune_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "issue": {
+                                        "type": "string",
+                                        "example": "Constatée",
+                                        "enum": [
+                                            "Constatée",
+                                            "Déférée"
+                                        ]
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": 14.6928
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -17.4467
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "sync_status": {
+                                        "type": "string",
+                                        "example": "synced",
+                                        "enum": [
+                                            "pending",
+                                            "synced"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/infractions/{id}": {
+            "get": {
+                "tags": [
+                    "Infractions"
+                ],
+                "summary": "Détail d'une infraction",
+                "operationId": "10dd658f8b49fcb62a9e0337fef15ec5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Infractions"
+                ],
+                "summary": "Modifier une infraction",
+                "description": "Règle métier : modification bloquée après 1 minute pour les agents.",
+                "operationId": "731d3ade959ef5241b5344a368f383b5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Infraction"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mise à jour réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Délai dépassé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Infractions"
+                ],
+                "summary": "Supprimer une infraction",
+                "operationId": "8531d91c6d982ebf32f09b16f412f8a0",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Supprimée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/regions": {
+            "get": {
+                "tags": [
+                    "Régions"
+                ],
+                "summary": "Liste des régions (paginée)",
+                "operationId": "55a86a3e6cad996799d0f7eb926559e1",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste paginée des régions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Régions"
+                ],
+                "summary": "Créer une région",
+                "operationId": "a774206732b4fd23848a53a1eb143ada",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nom",
+                                    "code"
+                                ],
+                                "properties": {
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Dakar"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "example": "DK"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/regions/all": {
+            "get": {
+                "tags": [
+                    "Régions"
+                ],
+                "summary": "Toutes les régions (sans pagination, pour listes déroulantes)",
+                "operationId": "9ce505e0fa1b196bde86563c9c7c9645",
+                "responses": {
+                    "200": {
+                        "description": "Liste complète des régions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/regions/{id}": {
+            "get": {
+                "tags": [
+                    "Régions"
+                ],
+                "summary": "Détail d'une région avec ses départements",
+                "operationId": "5f7d3aae22684e0542de09960daa956f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Région avec départements et communes"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/sync/batch": {
+            "post": {
+                "tags": [
+                    "Synchronisation"
+                ],
+                "summary": "Synchroniser les données offline par lot",
+                "description": "Envoie en une seule requête toutes les infractions et accidents saisis en mode hors-ligne.",
+                "operationId": "17b478c48719a9159824836a063841b9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "infractions": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/Infraction"
+                                        }
+                                    },
+                                    "accidents": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/Accident"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Synchronisation réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "infractions_synced": {
+                                            "type": "integer"
+                                        },
+                                        "accidents_synced": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/sync/status": {
+            "get": {
+                "tags": [
+                    "Synchronisation"
+                ],
+                "summary": "État de synchronisation",
+                "description": "Retourne le nombre d'éléments en attente et synchonisés.",
+                "operationId": "7bd5ab03d3512ac159a2922b6e67f5af",
+                "responses": {
+                    "200": {
+                        "description": "Statut de sync"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
+        "schemas": {
+            "SuccessResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Opération réussie"
+                    },
+                    "data": {
+                        "type": "object",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Erreur rencontrée"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Infraction": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type_infraction_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "service_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "annee": {
+                        "type": "integer",
+                        "example": 2026
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-05-17"
+                    },
+                    "lieu": {
+                        "type": "string",
+                        "example": "Sandaga, Dakar"
+                    },
+                    "commune_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "issue": {
+                        "type": "string",
+                        "example": "Constatée"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 14.6928
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -17.4467
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Usage de téléphone au volant constaté lors d'un contrôle."
+                    },
+                    "sync_status": {
+                        "type": "string",
+                        "example": "synced"
+                    }
+                },
+                "type": "object"
+            },
+            "Accident": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "corporel"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-05-17"
+                    },
+                    "lieu": {
+                        "type": "string",
+                        "example": "Vdn, Dakar"
+                    },
+                    "commune_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "service_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "moyen": {
+                        "type": "string",
+                        "example": "Scooter vs Voiture"
+                    },
+                    "cause_probable": {
+                        "type": "string",
+                        "example": "Non respect de la priorité"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 14.7228
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -17.4567
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Accident corporel léger."
+                    }
+                },
+                "type": "object"
+            },
+            "ImmigrationClandestine": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nombre_interpellation": {
+                        "type": "integer",
+                        "example": 45
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-05-17"
+                    },
+                    "service_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nombre_hommes": {
+                        "type": "integer",
+                        "example": 30
+                    },
+                    "nombre_femmes": {
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "nombre_enfants": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "nombre_maries": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "nombre_celibataires": {
+                        "type": "integer",
+                        "example": 30
+                    },
+                    "nombre_senegalais": {
+                        "type": "integer",
+                        "example": 35
+                    },
+                    "nombre_etrangers": {
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "zone_depart": {
+                        "type": "string",
+                        "example": "Mbour"
+                    },
+                    "zone_depart_lat": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 14.4128
+                    },
+                    "zone_depart_lng": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -16.9667
+                    },
+                    "zone_arrivee_prevue": {
+                        "type": "string",
+                        "example": "Iles Canaries"
+                    },
+                    "zone_arrivee_lat": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 28.2916
+                    },
+                    "zone_arrivee_lng": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -16.6291
+                    }
+                },
+                "type": "object"
+            }
+        },
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
@@ -116,8 +1804,34 @@
     },
     "tags": [
         {
+            "name": "Accidents",
+            "description": "Accidents de la circulation"
+        },
+        {
             "name": "Authentification",
-            "description": "Authentification"
+            "description": "Connexion, déconnexion et gestion du token JWT"
+        },
+        {
+            "name": "Régions",
+            "description": "Gestion des régions administratives"
+        },
+        {
+            "name": "Infractions"
+        },
+        {
+            "name": "Immigration Clandestine"
+        },
+        {
+            "name": "Dashboard",
+            "description": "Statistiques et KPIs"
+        },
+        {
+            "name": "Export",
+            "description": "Export et Import"
+        },
+        {
+            "name": "Synchronisation",
+            "description": "Synchronisation offline"
         }
     ]
 }

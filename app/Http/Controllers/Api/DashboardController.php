@@ -11,6 +11,7 @@ use App\Models\AmendePieceSaisie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Enums\ScopeType;
 use OpenApi\Annotations as OA;
 
 /**
@@ -19,46 +20,107 @@ use OpenApi\Annotations as OA;
  */
 class DashboardController extends ApiController
 {
-    // KPIs globaux
+    /**
+     * Applique les filtres geo (region_id, departement_id, commune_id, service_id)
+     * et temporels (annee, mois) sur une query Eloquent de type Infraction.
+     */
+    private function applyInfractionFilters($query, Request $request)
+    {
+        $annee  = $request->get('annee');
+        $mois   = $request->get('mois');
+        $region = $request->get('region_id');
+        $dept   = $request->get('departement_id');
+        $commune= $request->get('commune_id');
+        $svc    = $request->get('service_id');
+
+        if ($annee)   $query->byAnnee($annee);
+        if ($mois)    $query->whereMonth('date', (int)$mois);
+        if ($svc)     $query->byService($svc);
+        if ($commune) $query->byCommune($commune);
+        if ($dept) {
+            $query->whereHas('commune', fn($q) => $q->where('departement_id', $dept));
+        }
+        if ($region) {
+            $query->whereHas('commune.departement', fn($q) => $q->where('region_id', $region));
+        }
+        return $query;
+    }
+
+    /**
+     * Applique les filtres geo et temporels sur une query Accident.
+     */
+    private function applyAccidentFilters($query, Request $request)
+    {
+        $annee  = $request->get('annee');
+        $mois   = $request->get('mois');
+        $region = $request->get('region_id');
+        $dept   = $request->get('departement_id');
+        $commune= $request->get('commune_id');
+        $svc    = $request->get('service_id');
+
+        if ($annee)   $query->whereYear('date', $annee);
+        if ($mois)    $query->whereMonth('date', (int)$mois);
+        if ($svc)     $query->byService($svc);
+        if ($commune) $query->byCommune($commune);
+        if ($dept) {
+            $query->whereHas('commune', fn($q) => $q->where('departement_id', $dept));
+        }
+        if ($region) {
+            $query->whereHas('commune.departement', fn($q) => $q->where('region_id', $region));
+        }
+        return $query;
+    }
+
+    /**
+     * Applique les filtres geo et temporels sur une query générique (Immigration, Amendes…).
+     */
+    private function applyGenericFilters($query, Request $request, bool $hasService = true)
+    {
+        $annee  = $request->get('annee');
+        $mois   = $request->get('mois');
+        $svc    = $request->get('service_id');
+
+        if ($annee) $query->whereYear('date', $annee);
+        if ($mois)  $query->whereMonth('date', (int)$mois);
+        if ($svc && $hasService) $query->where('service_id', $svc);
+        return $query;
+    }
+
     /**
      * @OA\Get(
      *     path="/api/dashboard/stats",
      *     tags={"Dashboard"},
      *     summary="KPIs globaux du tableau de bord",
-     *     description="Retourne les statistiques clés pour une année donnée",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="annee", in="query", required=false, description="Année concernée", @OA\Schema(type="integer", example=2025)),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Statistiques retournées",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="total_infractions", type="integer", example=250),
-     *             @OA\Property(property="infractions_constatees", type="integer", example=180),
-     *             @OA\Property(property="infractions_deferees", type="integer", example=70),
-     *             @OA\Property(property="total_accidents", type="integer", example=45),
-     *             @OA\Property(property="accidents_mortels", type="integer", example=5),
-     *             @OA\Property(property="total_personnel", type="integer", example=320),
-     *             @OA\Property(property="total_immigration", type="integer", example=150)
-     *         )
-     *     )
+     *     @OA\Parameter(name="annee",         in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="mois",          in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=12)),
+     *     @OA\Parameter(name="region_id",     in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="departement_id",in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="commune_id",    in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="service_id",    in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Statistiques retournées")
      * )
      */
     public function stats(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
+        $infractions = $this->applyInfractionFilters(Infraction::visibleByUser(), $request);
+        $accidents   = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
+        $immigration = $this->applyGenericFilters(ImmigrationClandestine::visibleByUser(), $request);
+        $servRem     = $this->applyGenericFilters(ServiceRemunere::visibleByUser(), $request, false);
+        $amendes     = $this->applyGenericFilters(AmendePieceSaisie::visibleByUser(), $request);
 
         $data = [
-            'total_infractions' => Infraction::byAnnee($annee)->count(),
-            'infractions_constatees' => Infraction::byAnnee($annee)->byIssue('Constatée')->count(),
-            'infractions_deferees' => Infraction::byAnnee($annee)->byIssue('Déférée')->count(),
-            'total_accidents' => Accident::whereYear('date', $annee)->count(),
-            'accidents_mortels' => Accident::whereYear('date', $annee)->byType('mortel')->count(),
-            'accidents_corporels' => Accident::whereYear('date', $annee)->byType('corporel')->count(),
-            'accidents_materiels' => Accident::whereYear('date', $annee)->byType('matériel')->count(),
-            'total_personnel' => Personnel::byStatut('Actif')->count(),
-            'total_immigration' => ImmigrationClandestine::whereYear('date', $annee)->sum('nombre_interpellation'),
-            'total_services_remuneres' => ServiceRemunere::whereYear('date', $annee)->sum('montant'),
-            'total_amendes' => AmendePieceSaisie::whereYear('date', $annee)->byType('Amende')->sum('montant'),
+            'total_infractions'        => (clone $infractions)->count(),
+            'infractions_constatees'   => (clone $infractions)->byIssue('Constatée')->count(),
+            'infractions_deferees'     => (clone $infractions)->byIssue('Déférée')->count(),
+            'total_accidents'          => (clone $accidents)->count(),
+            'accidents_mortels'        => (clone $accidents)->byType('mortel')->count(),
+            'accidents_corporels'      => (clone $accidents)->byType('corporel')->count(),
+            'accidents_materiels'      => (clone $accidents)->byType('matériel')->count(),
+            'total_personnel'          => Personnel::visibleByUser()->byStatut('Actif')->count(),
+            'total_immigration'        => (clone $immigration)->sum('nombre_interpellation'),
+            'total_services_remuneres' => (clone $servRem)->sum('montant'),
+            'total_amendes'            => (clone $amendes)->byType('Amende')->sum('montant'),
         ];
 
         return $this->successResponse($data, 'Statistiques globales.');
@@ -70,19 +132,45 @@ class DashboardController extends ApiController
      *     tags={"Dashboard"},
      *     summary="Infractions par région",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="annee", in="query", required=false, @OA\Schema(type="integer", example=2025)),
-     *     @OA\Response(response=200, description="Nombre d'infractions groupées par région")
+     *     @OA\Parameter(name="annee", in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="mois",  in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Infractions groupées par région")
      * )
      */
     public function infractionsParRegion(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
+        $annee  = $request->get('annee', date('Y'));
+        $mois   = $request->get('mois');
+        $user   = auth()->user();
 
-        $data = DB::table('infractions')
-            ->join('communes', 'infractions.commune_id', '=', 'communes.id')
-            ->join('departements', 'communes.departement_id', '=', 'departements.id')
-            ->join('regions', 'departements.region_id', '=', 'regions.id')
-            ->where('infractions.annee', $annee)
+        $query = DB::table('infractions')
+            ->join('communes',    'infractions.commune_id',       '=', 'communes.id')
+            ->join('departements','communes.departement_id',       '=', 'departements.id')
+            ->join('regions',     'departements.region_id',        '=', 'regions.id')
+            ->where('infractions.annee', $annee);
+
+        if ($mois) {
+            $query->whereMonth('infractions.date', (int)$mois);
+        }
+
+        // Filtres geo frontend
+        if ($request->has('region_id'))     $query->where('regions.id',       $request->region_id);
+        if ($request->has('departement_id'))$query->where('departements.id',  $request->departement_id);
+        if ($request->has('commune_id'))    $query->where('communes.id',       $request->commune_id);
+        if ($request->has('service_id'))    $query->where('infractions.service_id', $request->service_id);
+
+        // Scope territorial
+        if ($user->read_scope_type !== ScopeType::NATIONAL) {
+            match ($user->read_scope_type) {
+                ScopeType::REGION      => $query->where('regions.id',       $user->read_scope_id),
+                ScopeType::DEPARTEMENT => $query->where('departements.id',  $user->read_scope_id),
+                ScopeType::COMMUNE     => $query->where('communes.id',      $user->read_scope_id),
+                ScopeType::SERVICE     => $query->where('infractions.service_id', $user->read_scope_id),
+                default                => null,
+            };
+        }
+
+        $data = $query
             ->select('regions.nom as region', DB::raw('COUNT(*) as total'))
             ->groupBy('regions.nom')
             ->orderByDesc('total')
@@ -98,14 +186,15 @@ class DashboardController extends ApiController
      *     summary="Accidents groupés par type",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="annee", in="query", required=false, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Accidents par type (matériel, corporel, mortel)")
+     *     @OA\Parameter(name="mois",  in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Accidents par type")
      * )
      */
     public function accidentsParType(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
+        $query = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
 
-        $data = Accident::whereYear('date', $annee)
+        $data = $query
             ->select('type', DB::raw('COUNT(*) as total'))
             ->groupBy('type')
             ->get();
@@ -120,42 +209,89 @@ class DashboardController extends ApiController
      *     summary="Tendances mensuelles infractions et accidents",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="annee", in="query", required=false, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Données mensuelles pour les graphiques")
+     *     @OA\Parameter(name="mois",  in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Données mensuelles pour graphiques")
      * )
      */
     public function tendancesMensuelles(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
+        $mois    = $request->get('mois');
+        $annee   = $request->get('annee');
+        $svcId   = $request->get('service_id');
 
-        $infractions = DB::table('infractions')
-            ->where('annee', $annee)
-            ->select(DB::raw('EXTRACT(MONTH FROM date) as mois'), DB::raw('COUNT(*) as total'))
-            ->groupBy('mois')
-            ->orderBy('mois')
-            ->get();
+        $infQuery = $this->applyInfractionFilters(Infraction::visibleByUser(), $request);
+        $accQuery = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
+        $immQuery = ImmigrationClandestine::visibleByUser();
+        if ($annee) $immQuery->whereYear('date', $annee);
+        if ($mois)  $immQuery->whereMonth('date', (int)$mois);
+        if ($svcId) $immQuery->where('service_id', $svcId);
 
-        $accidents = DB::table('accidents')
-            ->whereYear('date', $annee)
-            ->select(DB::raw('EXTRACT(MONTH FROM date) as mois'), DB::raw('COUNT(*) as total'))
-            ->groupBy('mois')
-            ->orderBy('mois')
-            ->get();
+        if ($mois) {
+            $infractions = $infQuery->select(DB::raw((int)$mois . ' as mois'), DB::raw('COUNT(*) as total'))->get();
+            $accidents   = $accQuery->select(DB::raw((int)$mois . ' as mois'), DB::raw('COUNT(*) as total'))->get();
+            $immigration = $immQuery->select(DB::raw((int)$mois . ' as mois'), DB::raw('SUM(nombre_interpellation) as total'))->get();
+        } else {
+            $infractions = $infQuery
+                ->select(DB::raw('EXTRACT(MONTH FROM date)::int as mois'), DB::raw('COUNT(*) as total'))
+                ->groupBy(DB::raw('EXTRACT(MONTH FROM date)::int'))
+                ->orderBy('mois')->get();
+
+            $accidents = $accQuery
+                ->select(DB::raw('EXTRACT(MONTH FROM date)::int as mois'), DB::raw('COUNT(*) as total'))
+                ->groupBy(DB::raw('EXTRACT(MONTH FROM date)::int'))
+                ->orderBy('mois')->get();
+
+            $immigration = $immQuery
+                ->select(DB::raw('EXTRACT(MONTH FROM date)::int as mois'), DB::raw('SUM(nombre_interpellation) as total'))
+                ->groupBy(DB::raw('EXTRACT(MONTH FROM date)::int'))
+                ->orderBy('mois')->get();
+        }
 
         return $this->successResponse([
             'infractions' => $infractions,
-            'accidents' => $accidents,
+            'accidents'   => $accidents,
+            'immigration' => $immigration,
         ]);
     }
 
-    // Infractions par type
+    /**
+     * Infractions par catégorie (PieChart "Formes de criminalité").
+     */
     public function infractionsParType(Request $request): JsonResponse
     {
-        $annee = $request->get('annee', date('Y'));
+        $annee  = $request->get('annee', date('Y'));
+        $mois   = $request->get('mois');
+        $user   = auth()->user();
 
-        $data = DB::table('infractions')
-            ->join('type_infractions', 'infractions.type_infraction_id', '=', 'type_infractions.id')
-            ->join('categorie_infractions', 'type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id')
-            ->where('infractions.annee', $annee)
+        $query = DB::table('infractions')
+            ->join('type_infractions',     'infractions.type_infraction_id',          '=', 'type_infractions.id')
+            ->join('categorie_infractions','type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id')
+            ->where('infractions.annee', $annee);
+
+        if ($mois) {
+            $query->whereMonth('infractions.date', (int)$mois);
+        }
+
+        if ($request->has('region_id') || $request->has('departement_id') || $request->has('commune_id')) {
+            $query->join('communes',    'infractions.commune_id',  '=', 'communes.id')
+                  ->join('departements','communes.departement_id', '=', 'departements.id');
+            if ($request->has('region_id'))      $query->join('regions', 'departements.region_id', '=', 'regions.id')->where('regions.id', $request->region_id);
+            if ($request->has('departement_id')) $query->where('departements.id', $request->departement_id);
+            if ($request->has('commune_id'))     $query->where('communes.id',     $request->commune_id);
+        }
+        if ($request->has('service_id')) {
+            $query->where('infractions.service_id', $request->service_id);
+        }
+
+        if ($user->read_scope_type !== ScopeType::NATIONAL) {
+            if ($user->read_scope_type === ScopeType::SERVICE) {
+                $query->where('infractions.service_id', $user->read_scope_id);
+            } else {
+                $query->whereIn('infractions.id', Infraction::visibleByUser()->select('id')->getQuery());
+            }
+        }
+
+        $data = $query
             ->select('categorie_infractions.nom as categorie', 'type_infractions.nom as type', DB::raw('COUNT(*) as total'))
             ->groupBy('categorie_infractions.nom', 'type_infractions.nom')
             ->orderByDesc('total')
@@ -164,12 +300,31 @@ class DashboardController extends ApiController
         return $this->successResponse($data);
     }
 
-    // Personnel par service
-    public function personnelParService(): JsonResponse
+    /**
+     * Personnel actif par service (BarChart "Effectifs par commissariat").
+     */
+    public function personnelParService(Request $request): JsonResponse
     {
-        $data = DB::table('personnels')
+        $user  = auth()->user();
+        $svc   = $request->get('service_id');
+        $region= $request->get('region_id');
+
+        $query = DB::table('personnels')
             ->join('services', 'personnels.service_id', '=', 'services.id')
-            ->where('personnels.statut', 'Actif')
+            ->where('personnels.statut', 'Actif');
+
+        if ($svc)    $query->where('personnels.service_id', $svc);
+        if ($region) {
+            $query->join('communes',    'services.commune_id',    '=', 'communes.id')
+                  ->join('departements','communes.departement_id','=', 'departements.id')
+                  ->where('departements.region_id', $region);
+        }
+
+        if ($user->read_scope_type !== ScopeType::NATIONAL) {
+            $query->whereIn('personnels.id', Personnel::visibleByUser()->select('id')->getQuery());
+        }
+
+        $data = $query
             ->select('services.nom as service', 'services.type', DB::raw('COUNT(*) as total'))
             ->groupBy('services.nom', 'services.type')
             ->orderByDesc('total')

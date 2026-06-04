@@ -4,17 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les victimes et impliqués dans les infractions et accidents.
  */
 class Victime extends Model
 {
-    use HasFactory;
+    use HasFactory, HasTerritorialScope;
 
     protected $fillable = [
         'nom', 'prenom', 'no_cin_passeport', 'sexe',
         'age', 'nationalite', 'infraction_id', 'accident_id',
+        'adresse', 'telephone',
+        'contact_urgence_nom', 'contact_urgence_telephone',
+        'gravite_blessures', 'etat_medical',
+        'statut_deces', 'observations',
+    ];
+
+    protected $casts = [
+        'statut_deces' => 'boolean',
     ];
 
     // La victime peut être liée à une infraction

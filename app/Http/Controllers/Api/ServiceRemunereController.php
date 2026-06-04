@@ -11,7 +11,7 @@ class ServiceRemunereController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ServiceRemunere::with(['service', 'user']);
+        $query = ServiceRemunere::with(['service', 'user'])->visibleByUser();
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('date_from') && $request->has('date_to')) $query->byDateRange($request->date_from, $request->date_to);
 
@@ -20,6 +20,10 @@ class ServiceRemunereController extends ApiController
 
     public function show(ServiceRemunere $serviceRemunere): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $serviceRemunere)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         return $this->successResponse($serviceRemunere->load(['service', 'user']));
     }
 
@@ -42,12 +46,20 @@ class ServiceRemunereController extends ApiController
 
     public function update(Request $request, ServiceRemunere $serviceRemunere): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $serviceRemunere)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $serviceRemunere->update($request->all());
         return $this->successResponse($serviceRemunere->load('service'), 'Mis à jour.');
     }
 
     public function destroy(ServiceRemunere $serviceRemunere): JsonResponse
     {
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $serviceRemunere)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
         $serviceRemunere->delete();
         return $this->successResponse(null, 'Supprimé.');
     }
