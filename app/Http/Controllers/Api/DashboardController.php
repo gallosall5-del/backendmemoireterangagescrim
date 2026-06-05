@@ -139,15 +139,16 @@ class DashboardController extends ApiController
      */
     public function infractionsParRegion(Request $request): JsonResponse
     {
-        $annee  = $request->get('annee', date('Y'));
+        $annee  = $request->get('annee');
         $mois   = $request->get('mois');
         $user   = auth()->user();
 
         $query = DB::table('infractions')
             ->join('communes',    'infractions.commune_id',       '=', 'communes.id')
             ->join('departements','communes.departement_id',       '=', 'departements.id')
-            ->join('regions',     'departements.region_id',        '=', 'regions.id')
-            ->where('infractions.annee', $annee);
+            ->join('regions',     'departements.region_id',        '=', 'regions.id');
+
+        if ($annee) $query->where('infractions.annee', $annee);
 
         if ($mois) {
             $query->whereMonth('infractions.date', (int)$mois);
@@ -259,14 +260,15 @@ class DashboardController extends ApiController
      */
     public function infractionsParType(Request $request): JsonResponse
     {
-        $annee  = $request->get('annee', date('Y'));
+        $annee  = $request->get('annee');
         $mois   = $request->get('mois');
         $user   = auth()->user();
 
         $query = DB::table('infractions')
             ->join('type_infractions',     'infractions.type_infraction_id',          '=', 'type_infractions.id')
-            ->join('categorie_infractions','type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id')
-            ->where('infractions.annee', $annee);
+            ->join('categorie_infractions','type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id');
+
+        if ($annee) $query->where('infractions.annee', $annee);
 
         if ($mois) {
             $query->whereMonth('infractions.date', (int)$mois);

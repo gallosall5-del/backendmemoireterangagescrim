@@ -28,22 +28,28 @@ class User extends Authenticatable implements JWTSubject
         'write_scope_id',
         'is_active',
         'last_login_at',
+        'is_2fa_enabled',
+        'two_factor_secret',
+        'two_factor_confirmed_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
     ];
 
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_login_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'read_scope_type' => \App\Enums\ScopeType::class,
-            'write_scope_type' => \App\Enums\ScopeType::class,
+            'email_verified_at'       => 'datetime',
+            'last_login_at'           => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
+            'password'                => 'hashed',
+            'is_active'               => 'boolean',
+            'is_2fa_enabled'          => 'boolean',
+            'read_scope_type'         => \App\Enums\ScopeType::class,
+            'write_scope_type'        => \App\Enums\ScopeType::class,
         ];
     }
 

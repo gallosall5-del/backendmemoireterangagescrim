@@ -35,16 +35,21 @@ use App\Http\Controllers\Api\SearchController;
 // ========== Authentification ==========
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('2fa/verify', [AuthController::class, 'verify2fa'])->middleware('throttle:5,1');
     Route::middleware('auth:api')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('change-password', [AuthController::class, 'changePassword']);
+        // 2FA management
+        Route::post('2fa/setup', [AuthController::class, 'setup2fa']);
+        Route::post('2fa/enable', [AuthController::class, 'enable2fa']);
+        Route::post('2fa/disable', [AuthController::class, 'disable2fa']);
     });
 });
 
 // ========== Routes protégées par JWT ==========
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'verify.device'])->group(function () {
 
     // --- Subdivisions administratives ---
     Route::prefix('regions')->group(function () {

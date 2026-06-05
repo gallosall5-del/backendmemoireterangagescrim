@@ -20,7 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(append: [
+            \App\Http\Middleware\InjectJwtFromCookie::class,
             \App\Http\Middleware\CheckTerritorialAccess::class,
+        ]);
+
+        $middleware->alias([
+            'verify.device' => \App\Http\Middleware\VerifyDeviceSession::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
