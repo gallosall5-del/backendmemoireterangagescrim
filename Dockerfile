@@ -3,6 +3,8 @@ FROM php:8.3-cli
 # Extensions système
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpq-dev libzip-dev libpng-dev libxml2-dev \
+    libonig-dev libfreetype6-dev libjpeg62-turbo-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring zip xml bcmath gd opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
