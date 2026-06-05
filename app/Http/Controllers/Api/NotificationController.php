@@ -53,9 +53,13 @@ class NotificationController extends ApiController
         return $this->successResponse(null, 'Toutes les notifications marquées comme lues.');
     }
 
-    // Envoyer une notification (admin) — user_id optionnel : si absent, diffusion globale
+    // Envoyer une notification — réservé aux admins et super_admins
     public function send(Request $request): JsonResponse
     {
+        if (!auth()->user()->hasAnyRole(['super_admin', 'admin'])) {
+            return $this->errorResponse('Accès refusé. Seuls les administrateurs peuvent envoyer des notifications.', 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'nullable|exists:users,id',
             'title'   => 'required|string|max:255',

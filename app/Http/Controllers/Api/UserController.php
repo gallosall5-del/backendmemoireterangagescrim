@@ -38,7 +38,7 @@ class UserController extends ApiController
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'telephone' => 'nullable|string|max:20',
-            'service_id' => 'nullable|exists:services,id',
+            'service_id' => 'required_if:role,agent|required_if:role,superviseur|nullable|exists:services,id',
             'role' => 'required|string|exists:roles,name',
             'is_active' => 'nullable|boolean',
         ]);

@@ -14,56 +14,71 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Super Admin
-        $superAdmin = User::create([
-            'name' => 'Admin Principal',
-            'email' => 'admin@gescrim.sn',
-            'password' => Hash::make('password123'),
-            'telephone' => '+221 77 000 00 01',
-            'is_active' => true,
+        $superAdmin = User::firstOrCreate(['email' => 'admin@gescrim.sn'], [
+            'name'             => 'Admin Principal',
+            'password'         => Hash::make('password123'),
+            'telephone'        => '+221 77 000 00 01',
+            'is_active'        => true,
+            'read_scope_type'  => 'national',
+            'read_scope_id'    => null,
+            'write_scope_type' => 'national',
+            'write_scope_id'   => null,
         ]);
-        $superAdmin->assignRole('super_admin');
+        $superAdmin->syncRoles(['super_admin']);
 
-        // Admin
-        $admin = User::create([
-            'name' => 'Administrateur DSP',
-            'email' => 'admin.dsp@gescrim.sn',
-            'password' => Hash::make('password123'),
-            'telephone' => '+221 77 000 00 02',
-            'is_active' => true,
+        // Admin DSP (portée nationale)
+        $admin = User::firstOrCreate(['email' => 'admin.dsp@gescrim.sn'], [
+            'name'             => 'Administrateur DSP',
+            'password'         => Hash::make('password123'),
+            'telephone'        => '+221 77 000 00 02',
+            'is_active'        => true,
+            'read_scope_type'  => 'national',
+            'read_scope_id'    => null,
+            'write_scope_type' => 'national',
+            'write_scope_id'   => null,
         ]);
-        $admin->assignRole('admin');
+        $admin->syncRoles(['admin']);
 
-        // Superviseur
-        $superviseur = User::create([
-            'name' => 'Superviseur Dakar',
-            'email' => 'superviseur@gescrim.sn',
-            'password' => Hash::make('password123'),
-            'telephone' => '+221 77 000 00 03',
-            'service_id' => 1, // Premier service créé
-            'is_active' => true,
+        // Superviseur Dakar (portée région 1 = Dakar)
+        $superviseur = User::firstOrCreate(['email' => 'superviseur@gescrim.sn'], [
+            'name'             => 'Superviseur Dakar',
+            'password'         => Hash::make('password123'),
+            'telephone'        => '+221 77 000 00 03',
+            'service_id'       => 1,
+            'is_active'        => true,
+            'read_scope_type'  => 'region',
+            'read_scope_id'    => 1,
+            'write_scope_type' => 'region',
+            'write_scope_id'   => 1,
         ]);
-        $superviseur->assignRole('superviseur');
+        $superviseur->syncRoles(['superviseur']);
 
-        // Agent terrain
-        $agent = User::create([
-            'name' => 'Agent Terrain',
-            'email' => 'agent@gescrim.sn',
-            'password' => Hash::make('password123'),
-            'telephone' => '+221 77 000 00 04',
-            'service_id' => 1,
-            'is_active' => true,
+        // Agent terrain (portée service 1)
+        $agent = User::firstOrCreate(['email' => 'agent@gescrim.sn'], [
+            'name'             => 'Agent Terrain',
+            'password'         => Hash::make('password123'),
+            'telephone'        => '+221 77 000 00 04',
+            'service_id'       => 1,
+            'is_active'        => true,
+            'read_scope_type'  => 'service',
+            'read_scope_id'    => 1,
+            'write_scope_type' => 'service',
+            'write_scope_id'   => 1,
         ]);
-        $agent->assignRole('agent');
+        $agent->syncRoles(['agent']);
 
-        // Agent 2
-        $agent2 = User::create([
-            'name' => 'Agent Mbour',
-            'email' => 'agent.mbour@gescrim.sn',
-            'password' => Hash::make('password123'),
-            'telephone' => '+221 77 000 00 05',
-            'service_id' => 2,
-            'is_active' => true,
+        // Agent Mbour (portée service 2)
+        $agent2 = User::firstOrCreate(['email' => 'agent.mbour@gescrim.sn'], [
+            'name'             => 'Agent Mbour',
+            'password'         => Hash::make('password123'),
+            'telephone'        => '+221 77 000 00 05',
+            'service_id'       => 2,
+            'is_active'        => true,
+            'read_scope_type'  => 'service',
+            'read_scope_id'    => 2,
+            'write_scope_type' => 'service',
+            'write_scope_id'   => 2,
         ]);
-        $agent2->assignRole('agent');
+        $agent2->syncRoles(['agent']);
     }
 }

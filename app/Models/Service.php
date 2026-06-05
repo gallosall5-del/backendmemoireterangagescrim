@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
+use App\Traits\HasTerritorialScope;
 
 /**
  * Modèle pour les services de la DSP (CC, CA, PP, CU, CS).
  */
 class Service extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, Auditable, HasTerritorialScope;
 
     protected $fillable = ['nom', 'type', 'commune_id', 'adresse', 'telephone', 'email', 'latitude', 'longitude'];
 

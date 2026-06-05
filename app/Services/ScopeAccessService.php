@@ -39,6 +39,11 @@ class ScopeAccessService
         $scopeType = $action === 'write' ? $user->write_scope_type : $user->read_scope_type;
         $scopeId = $action === 'write' ? $user->write_scope_id : $user->read_scope_id;
 
+        // Scope non configuré : refus par sécurité
+        if ($scopeType === null) {
+            return false;
+        }
+
         // Si scope est national, il a accès à tout
         if ($scopeType === ScopeType::NATIONAL) {
             return true;
@@ -143,8 +148,13 @@ class ScopeAccessService
     /**
      * Construction de la requête filtrée selon le scope territorial.
      */
-    protected function applyScope(Builder $query, ScopeType $scopeType, ?int $scopeId): Builder
+    protected function applyScope(Builder $query, ?ScopeType $scopeType, ?int $scopeId): Builder
     {
+        // Scope non configuré : sécurité par défaut → aucun résultat
+        if ($scopeType === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
         if ($scopeType === ScopeType::NATIONAL) {
             return $query;
         }

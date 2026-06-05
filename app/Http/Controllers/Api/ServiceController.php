@@ -14,7 +14,7 @@ class ServiceController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Service::with('commune.departement.region');
+        $query = Service::with('commune.departement.region')->visibleByUser();
 
         if ($request->has('search')) {
             $query->search($request->search);
@@ -35,7 +35,7 @@ class ServiceController extends ApiController
 
     public function all(Request $request): JsonResponse
     {
-        $query = Service::with('commune.departement.region')->orderBy('nom');
+        $query = Service::with('commune.departement.region')->visibleByUser()->orderBy('nom');
         if ($request->has('type')) {
             $query->byType($request->type);
         }

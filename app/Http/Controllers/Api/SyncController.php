@@ -131,9 +131,9 @@ class SyncController extends ApiController
     {
         $data = [
             'pending_infractions' => Infraction::pending()->count(),
-            'pending_accidents' => Accident::pending()->count(),
-            'synced_infractions' => Infraction::synced()->count(),
-            'synced_accidents' => Accident::synced()->count(),
+            'pending_accidents'   => Accident::pending()->count(),
+            'synced_infractions'  => Infraction::where('sync_status', 'synced')->count(),
+            'synced_accidents'    => Accident::where('sync_status', 'synced')->count(),
         ];
         return $this->successResponse($data);
     }

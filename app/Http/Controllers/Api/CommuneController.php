@@ -32,9 +32,12 @@ class CommuneController extends ApiController
 
     public function all(Request $request): JsonResponse
     {
-        $query = Commune::with('departement')->orderBy('nom');
+        $query = Commune::with('departement.region')->orderBy('nom');
         if ($request->has('departement_id')) {
             $query->byDepartement($request->departement_id);
+        }
+        if ($request->has('region_id')) {
+            $query->whereHas('departement', fn($q) => $q->where('region_id', $request->region_id));
         }
         return $this->successResponse($query->get());
     }
