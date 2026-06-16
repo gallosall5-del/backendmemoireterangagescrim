@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +14,34 @@ class AuditLogController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
+        $me          = auth()->user();
+        $currentRole = $me->getRoleNames()->first() ?? '';
+
         $query = AuditLog::with('user');
+
+        // Restreindre les logs selon la portée territoriale
+        if ($currentRole !== 'super_admin') {
+            // Construire la liste des user_id visibles selon le rôle
+            $visibleUserIds = match ($currentRole) {
+                'admin' => User::whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
+                               ->where(function ($q) use ($me) {
+                                   $q->whereHas('service', function ($sq) use ($me) {
+                                       $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                   });
+                               })->pluck('id'),
+                'superviseur' => User::whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
+                                ->where(function ($q) use ($me) {
+                                    $q->whereHas('service', function ($sq) use ($me) {
+                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                    })->orWhere(function ($sq) use ($me) {
+                                        $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
+                                    });
+                                })->pluck('id'),
+                default => collect([$me->id]),
+            };
+
+            $query->whereIn('user_id', $visibleUserIds);
+        }
 
         if ($request->has('user_id')) $query->byUser($request->user_id);
         if ($request->has('action')) $query->byAction($request->action);

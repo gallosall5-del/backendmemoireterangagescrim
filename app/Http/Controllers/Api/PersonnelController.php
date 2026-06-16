@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Personnel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -76,7 +77,14 @@ class PersonnelController extends ApiController
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $personnel = Personnel::create($request->all());
+        $personnel = DB::transaction(fn() => Personnel::create(array_merge(
+            $request->only([
+                'ccap', 'prenom', 'nom', 'grade', 'telephone', 'anciennete',
+                'date_entree_corps', 'sexe', 'situation_matrimoniale',
+                'date_naissance', 'lieu_naissance', 'service_id', 'statut', 'sanction',
+            ]),
+            ['user_id' => auth()->id()]
+        )));
 
         return $this->successResponse($personnel->load('service'), 'Personnel créé avec succès.', 201);
     }
@@ -108,7 +116,11 @@ class PersonnelController extends ApiController
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $personnel->update($request->all());
+        $personnel->update($request->only([
+            'ccap', 'prenom', 'nom', 'grade', 'telephone', 'anciennete',
+            'date_entree_corps', 'sexe', 'situation_matrimoniale',
+            'date_naissance', 'lieu_naissance', 'service_id', 'statut', 'sanction',
+        ]));
 
         return $this->successResponse($personnel->load('service'), 'Personnel mis à jour avec succès.');
     }

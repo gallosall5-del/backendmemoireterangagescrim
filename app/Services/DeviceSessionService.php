@@ -19,19 +19,20 @@ class DeviceSessionService
         $ip        = $request->ip() ?? '0.0.0.0';
         $userAgent = $request->userAgent() ?? '';
 
-        DB::table('device_sessions')->updateOrInsert(
+        // upsert is atomic in PostgreSQL (INSERT ... ON CONFLICT DO UPDATE)
+        DB::table('device_sessions')->upsert(
             [
-                'user_id'   => $user->id,
-                'device_id' => $deviceId,
-            ],
-            [
+                'user_id'      => $user->id,
+                'device_id'    => $deviceId,
                 'user_agent'   => $userAgent,
                 'ip_address'   => $ip,
                 'last_seen_at' => now(),
                 'is_active'    => true,
-                'updated_at'   => now(),
                 'created_at'   => now(),
-            ]
+                'updated_at'   => now(),
+            ],
+            ['user_id', 'device_id'],
+            ['user_agent', 'ip_address', 'last_seen_at', 'is_active', 'updated_at']
         );
 
         return $deviceId;
@@ -78,7 +79,18 @@ class DeviceSessionService
     }
 
     /**
-     * Revoke all device sessions for a user (on logout or security reset).
+     * Revoke only the current device session on logout.
+     */
+    public function revokeCurrent(User $user, string $deviceId): void
+    {
+        DB::table('device_sessions')
+            ->where('user_id', $user->id)
+            ->where('device_id', $deviceId)
+            ->update(['is_active' => false, 'updated_at' => now()]);
+    }
+
+    /**
+     * Revoke all device sessions for a user (security reset / account compromise).
      */
     public function revokeAll(User $user): void
     {

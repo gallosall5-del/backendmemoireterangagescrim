@@ -38,7 +38,7 @@ class VictimeController extends ApiController
         if (!$scopeService->canRead(auth()->user(), $victime)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
-        $victime->load(['infraction.typeInfraction', 'accident']);
+        $victime->load(['infraction.typeInfraction', 'accident', 'media']);
         return $this->successResponse($victime);
     }
 
@@ -88,6 +88,13 @@ class VictimeController extends ApiController
 
         if ($validator->fails()) {
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        // Vérifier qu'après la mise à jour la victime reste liée à une entité
+        $newInfractionId = $request->has('infraction_id') ? $request->infraction_id : $victime->infraction_id;
+        $newAccidentId   = $request->has('accident_id')   ? $request->accident_id   : $victime->accident_id;
+        if (!$newInfractionId && !$newAccidentId) {
+            return $this->errorResponse('La victime doit rester liée à une infraction ou un accident.', 422);
         }
 
         $victime->update($request->all());

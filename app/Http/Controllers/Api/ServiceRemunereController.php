@@ -33,6 +33,7 @@ class ServiceRemunereController extends ApiController
             'libelle' => 'required|string|max:255',
             'service_id' => 'required|exists:services,id',
             'date' => 'required|date',
+            'heure' => 'nullable|date_format:H:i',
             'montant' => 'required|numeric|min:0',
             'description' => 'nullable|string',
         ]);

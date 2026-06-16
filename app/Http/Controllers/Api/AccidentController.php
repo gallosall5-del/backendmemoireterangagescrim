@@ -111,13 +111,14 @@ class AccidentController extends ApiController
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:matériel,corporel,mortel',
             'date' => 'required|date',
+            'heure' => 'nullable|date_format:H:i',
             'lieu' => 'required|string|max:500',
             'commune_id' => 'required|exists:communes,id',
             'service_id' => 'required|exists:services,id',
             'moyen' => 'nullable|string|max:255',
             'cause_probable' => 'nullable|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:12,17',
+            'longitude' => 'nullable|numeric|between:-18,-11',
             'description' => 'nullable|string',
             'sync_status' => 'nullable|in:pending,synced',
         ], [
@@ -125,6 +126,8 @@ class AccidentController extends ApiController
             'type.in' => 'Le type doit être matériel, corporel ou mortel.',
             'date.required' => 'La date est obligatoire.',
             'lieu.required' => 'Le lieu est obligatoire.',
+            'latitude.between' => 'La latitude doit être comprise entre 12 et 17 (territoire sénégalais).',
+            'longitude.between' => 'La longitude doit être comprise entre -18 et -11 (territoire sénégalais).',
         ]);
 
         if ($validator->fails()) {
@@ -159,9 +162,19 @@ class AccidentController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $accident)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
+
+        $minutesSinceCreation = $accident->created_at->diffInMinutes(now());
+        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole(['super_admin', 'admin'])) {
+            return $this->errorResponse(
+                'Modification interdite : le délai réglementaire de 60 minutes est dépassé.',
+                403
+            );
+        }
+
         $validator = Validator::make($request->all(), [
             'type' => 'sometimes|in:matériel,corporel,mortel',
             'date' => 'sometimes|date',
+            'heure' => 'nullable|date_format:H:i',
             'lieu' => 'sometimes|string|max:500',
             'commune_id' => 'sometimes|exists:communes,id',
             'service_id' => 'sometimes|exists:services,id',

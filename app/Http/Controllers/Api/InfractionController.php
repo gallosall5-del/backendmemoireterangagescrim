@@ -135,14 +135,15 @@ class InfractionController extends ApiController
             'service_id' => 'required|exists:services,id',
             'annee' => 'required|integer|min:2000|max:' . (date('Y') + 1),
             'date' => 'required|date',
+            'heure' => 'nullable|date_format:H:i',
             'lieu' => 'required|string|max:500',
             'commune_id' => 'required|exists:communes,id',
             'issue' => 'required|in:Constatée,Déférée',
             'type_drogue' => 'nullable|string|max:255',
             'unite' => 'nullable|string|max:50',
             'quantite' => 'nullable|numeric|min:0',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:12,17',
+            'longitude' => 'nullable|numeric|between:-18,-11',
             'description' => 'nullable|string',
             'sync_status' => 'nullable|in:pending,synced',
         ], [
@@ -152,6 +153,8 @@ class InfractionController extends ApiController
             'lieu.required' => 'Le lieu est obligatoire.',
             'commune_id.required' => 'La commune est obligatoire.',
             'issue.required' => 'L\'issue est obligatoire.',
+            'latitude.between' => 'La latitude doit être comprise entre 12 et 17 (territoire sénégalais).',
+            'longitude.between' => 'La longitude doit être comprise entre -18 et -11 (territoire sénégalais).',
         ]);
 
         if ($validator->fails()) {
@@ -190,11 +193,11 @@ class InfractionController extends ApiController
             return $this->errorResponse('Accès territorial refusé. Vous ne pouvez pas modifier cette donnée.', 403);
         }
 
-        // Vérifier la règle métier : modification autorisée seulement dans la 1ère minute
+        // Règle métier : modification autorisée dans les 60 minutes suivant la création
         $minutesSinceCreation = $infraction->created_at->diffInMinutes(now());
-        if ($minutesSinceCreation > 1 && !auth()->user()->hasRole(['super_admin', 'admin'])) {
+        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole(['super_admin', 'admin'])) {
             return $this->errorResponse(
-                'Modification interdite : le délai de 1 minute est dépassé.',
+                'Modification interdite : le délai réglementaire de 60 minutes est dépassé.',
                 403
             );
         }
@@ -204,6 +207,7 @@ class InfractionController extends ApiController
             'service_id' => 'sometimes|exists:services,id',
             'annee' => 'sometimes|integer|min:2000',
             'date' => 'sometimes|date',
+            'heure' => 'nullable|date_format:H:i',
             'lieu' => 'sometimes|string|max:500',
             'commune_id' => 'sometimes|exists:communes,id',
             'issue' => 'sometimes|in:Constatée,Déférée',

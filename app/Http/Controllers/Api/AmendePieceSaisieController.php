@@ -34,6 +34,7 @@ class AmendePieceSaisieController extends ApiController
             'type' => 'required|in:Amende,Pièce saisie',
             'service_id' => 'required|exists:services,id',
             'date' => 'required|date',
+            'heure' => 'nullable|date_format:H:i',
             'montant' => 'required|numeric|min:0',
             'description' => 'nullable|string',
         ]);
@@ -55,6 +56,7 @@ class AmendePieceSaisieController extends ApiController
             'type'        => 'sometimes|in:Amende,Pièce saisie',
             'service_id'  => 'sometimes|exists:services,id',
             'date'        => 'sometimes|date',
+            'heure'       => 'nullable|date_format:H:i',
             'montant'     => 'sometimes|numeric|min:0',
             'description' => 'nullable|string',
         ]);

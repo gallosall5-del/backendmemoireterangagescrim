@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Mail\PasswordResetMail;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\RecaptchaService;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -20,12 +22,14 @@ use OpenApi\Attributes as OA;
 
 class AuthController extends ApiController
 {
+    private int $pwdResetExpiry = 10; // minutes
+
     public function __construct(
         private RecaptchaService    $recaptcha,
         private TwoFactorService    $twoFactor,
         private DeviceSessionService $deviceSession,
     ) {
-        $this->middleware('auth:api')->except(['login', 'verify2fa']);
+        $this->middleware('auth:api')->except(['login', 'verify2fa', 'forgotPassword', 'resetPasswordConfirm']);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -95,10 +99,20 @@ class AuthController extends ApiController
             );
         }
 
-        // ── Compte actif ──
+        // ── Compte actif + pré-vérification rôle/client avant génération du JWT ──
         $user = User::where('email', $email)->first();
         if ($user && !$user->is_active) {
             return $this->errorResponse('Votre compte est désactivé. Contactez l\'administrateur.', 403);
+        }
+
+        $isMobileClient = $request->header('X-Mobile-Client') === 'flutter';
+        if ($user) {
+            if ($isMobileClient && !$user->hasRole('agent')) {
+                return $this->errorResponse('L\'application mobile est réservée aux agents terrain.', 403);
+            }
+            if (!$isMobileClient && $user->hasRole('agent')) {
+                return $this->errorResponse('Les agents terrain doivent utiliser l\'application mobile.', 403);
+            }
         }
 
         // ── Vérification credentials ──
@@ -134,19 +148,48 @@ class AuthController extends ApiController
 
         $user = JWTAuth::setToken($token)->toUser();
 
+        // ── Restriction mobile (garde défensive post-attempt) ──
+        if ($isMobileClient && !$user->hasRole('agent')) {
+            try { JWTAuth::invalidate($token); } catch (\Throwable) {}
+            AuditLog::create([
+                'user_id'    => $user->id,
+                'action'     => 'mobile_login_denied',
+                'model_type' => User::class,
+                'model_id'   => $user->id,
+                'new_values' => ['email' => $email, 'role' => $user->getRoleNames()->first()],
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('L\'application mobile est réservée aux agents terrain.', 403);
+        }
+
+        // ── Restriction web (garde défensive post-attempt) ──
+        if (!$isMobileClient && $user->hasRole('agent')) {
+            try { JWTAuth::invalidate($token); } catch (\Throwable) {}
+            AuditLog::create([
+                'user_id'    => $user->id,
+                'action'     => 'web_login_denied',
+                'model_type' => User::class,
+                'model_id'   => $user->id,
+                'new_values' => ['email' => $email, 'role' => 'agent', 'reason' => 'web_agent_forbidden'],
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('Les agents terrain doivent utiliser l\'application mobile.', 403);
+        }
+
         // ── 2FA activé : retourner un ticket temporaire, pas de JWT complet ──
         $deviceId = $request->header('X-Device-Id')
             ?? $this->deviceSession->generateDeviceId($request);
         $deviceInfo = $this->deviceSession->verify($user, $request, $deviceId);
 
-        $require2fa = $user->is_2fa_enabled
-            || (!$deviceInfo['trusted'] && $user->is_2fa_enabled);
+        $require2fa = $user->is_2fa_enabled;
 
         if ($require2fa) {
             // Invalider le token immédiatement — on ne le donne pas encore
             try { JWTAuth::invalidate($token); } catch (\Throwable) {}
 
-            // Envoyer le code OTP par email
+            // Envoyer le code OTP par email (peut être ignoré si un envoi récent existe)
             $this->twoFactor->sendOtp($user);
 
             // Stocker un ticket de 5 minutes en cache
@@ -254,7 +297,11 @@ class AuthController extends ApiController
     {
         $user = auth()->user();
 
-        $this->deviceSession->revokeAll($user);
+        // Révoquer uniquement l'appareil courant, pas toutes les sessions
+        $deviceId = $request->header('X-Device-Id') ?? $request->cookie('device_id');
+        if ($deviceId) {
+            $this->deviceSession->revokeCurrent($user, $deviceId);
+        }
 
         AuditLog::create([
             'user_id'    => $user->id,
@@ -307,6 +354,258 @@ class AuthController extends ApiController
             'permissions'      => $user->getAllPermissions()->pluck('name'),
             'personnel'        => $user->personnel,
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // HELPERS GÉNÉRATION MOT DE PASSE
+    // ──────────────────────────────────────────────────────────────
+
+    private function generateSecurePassword(int $length = 16): string
+    {
+        $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $lowercase = 'abcdefghjkmnpqrstuvwxyz';
+        $digits    = '23456789';
+        $special   = '@#$%&*!?';
+        $all       = $uppercase . $lowercase . $digits . $special;
+
+        $password  = $uppercase[random_int(0, strlen($uppercase) - 1)];
+        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
+        $password .= $digits[random_int(0, strlen($digits) - 1)];
+        $password .= $special[random_int(0, strlen($special) - 1)];
+
+        for ($i = 4; $i < $length; $i++) {
+            $password .= $all[random_int(0, strlen($all) - 1)];
+        }
+
+        $chars = str_split($password);
+        shuffle($chars);
+        return implode('', $chars);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // MOT DE PASSE OUBLIÉ — Étape 1 : demande de réinitialisation
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/auth/forgot-password
+     * Vérifie reCAPTCHA, retrouve le compte et envoie un OTP de réinitialisation.
+     * Répond toujours avec un message neutre pour ne pas divulguer si l'email existe.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email'           => 'required|email',
+            'recaptcha_token' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        $ip    = $request->ip() ?? '0.0.0.0';
+        $email = $request->input('email');
+
+        // ── reCAPTCHA ──
+        $captchaResult = $this->recaptcha->verify(
+            $request->input('recaptcha_token', ''),
+            $ip,
+            'forgot_password'
+        );
+
+        if (!$captchaResult['valid']) {
+            return $this->errorResponse('Vérification anti-bot échouée. Réessayez.', 422);
+        }
+
+        // ── Throttle : 3 demandes max par email par heure ──
+        $throttleKey = "pwd_reset_throttle:{$email}";
+        $attempts    = (int) Cache::get($throttleKey, 0);
+
+        if ($attempts >= 3) {
+            AuditLog::create([
+                'user_id'    => null,
+                'action'     => 'password_reset_throttled',
+                'model_type' => User::class,
+                'model_id'   => null,
+                'new_values' => ['email' => $email],
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+            ]);
+            // Réponse neutre pour ne pas aider l'énumération
+            return $this->successResponse(
+                ['email_hint' => $this->maskEmail($email)],
+                'Si un compte correspond à cet email, un code de réinitialisation a été envoyé.'
+            );
+        }
+
+        Cache::put($throttleKey, $attempts + 1, now()->addHour());
+
+        $user = User::where('email', $email)->first();
+
+        // Réponse identique si l'email n'existe pas (anti-énumération)
+        if (!$user || !$user->is_active) {
+            return $this->successResponse(
+                ['email_hint' => $this->maskEmail($email)],
+                'Si un compte correspond à cet email, un code de réinitialisation a été envoyé.'
+            );
+        }
+
+        // ── Cooldown 90s entre deux envois pour ce compte ──
+        $cooldownKey = "pwd_reset_cooldown:{$user->id}";
+        if (Cache::has($cooldownKey)) {
+            return $this->successResponse(
+                ['email_hint' => $this->maskEmail($email)],
+                'Si un compte correspond à cet email, un code de réinitialisation a été envoyé.'
+            );
+        }
+
+        // ── Générer et stocker l'OTP de réinitialisation ──
+        $code   = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $ticket = Str::random(64);
+
+        Cache::put("pwd_reset_otp:{$user->id}", bcrypt($code), now()->addMinutes($this->pwdResetExpiry));
+        Cache::put("pwd_reset_ticket:{$ticket}", $user->id, now()->addMinutes($this->pwdResetExpiry));
+        Cache::put($cooldownKey, true, now()->addSeconds(90));
+
+        Mail::to($user->email)->send(new PasswordResetMail($code, $user->name, $this->pwdResetExpiry));
+
+        AuditLog::create([
+            'user_id'    => $user->id,
+            'action'     => 'password_reset_requested',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'new_values' => ['ip' => $ip],
+            'ip_address' => $ip,
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(
+            [
+                'ticket'     => $ticket,
+                'email_hint' => $this->maskEmail($user->email),
+            ],
+            'Si un compte correspond à cet email, un code de réinitialisation a été envoyé.'
+        );
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // MOT DE PASSE OUBLIÉ — Étape 2 : confirmation OTP + nouveau MDP
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/auth/reset-password-confirm
+     */
+    public function resetPasswordConfirm(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'ticket'                => 'required|string',
+            'code'                  => 'required|string|size:6|regex:/^\d{6}$/',
+            'password'              => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        $ip     = $request->ip() ?? '0.0.0.0';
+        $ticket = $request->input('ticket');
+
+        $userId = Cache::get("pwd_reset_ticket:{$ticket}");
+        if (!$userId) {
+            return $this->errorResponse('Lien de réinitialisation expiré ou invalide. Recommencez la demande.', 401);
+        }
+
+        $user = User::find($userId);
+        if (!$user || !$user->is_active) {
+            return $this->errorResponse('Compte introuvable ou désactivé.', 404);
+        }
+
+        // ── Compteur d'échecs OTP (5 max) ──
+        $failKey = "pwd_reset_fails:{$userId}";
+        $fails   = (int) Cache::get($failKey, 0);
+
+        if ($fails >= 5) {
+            Cache::forget("pwd_reset_ticket:{$ticket}");
+            Cache::forget("pwd_reset_otp:{$userId}");
+            AuditLog::create([
+                'user_id'    => $userId,
+                'action'     => 'password_reset_blocked',
+                'model_type' => User::class,
+                'model_id'   => $userId,
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('Trop de tentatives. Recommencez la demande de réinitialisation.', 429);
+        }
+
+        $hashedCode = Cache::get("pwd_reset_otp:{$userId}");
+        if (!$hashedCode || !password_verify($request->input('code'), $hashedCode)) {
+            Cache::put($failKey, $fails + 1, now()->addMinutes($this->pwdResetExpiry));
+            return $this->errorResponse('Code incorrect ou expiré.', 401);
+        }
+
+        // ── Code valide : réinitialiser le mot de passe ──
+        $user->update(['password' => Hash::make($request->input('password'))]);
+
+        // Révoquer toutes les sessions actives (sécurité)
+        $this->deviceSession->revokeAll($user);
+
+        // Nettoyer tous les tokens de reset
+        Cache::forget("pwd_reset_ticket:{$ticket}");
+        Cache::forget("pwd_reset_otp:{$userId}");
+        Cache::forget($failKey);
+        Cache::forget("pwd_reset_throttle:{$user->email}");
+
+        AuditLog::create([
+            'user_id'    => $user->id,
+            'action'     => 'password_reset_confirmed',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'new_values' => ['message' => 'Mot de passe réinitialisé via demande self-service'],
+            'ip_address' => $ip,
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(null, 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.');
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // RÉINITIALISATION MOT DE PASSE PAR ADMIN
+    // ──────────────────────────────────────────────────────────────
+
+    public function adminResetPassword(Request $request, User $target): JsonResponse
+    {
+        $me = auth()->user();
+
+        if (!$me->hasRole(['super_admin', 'admin'])) {
+            return $this->errorResponse('Action réservée aux administrateurs.', 403);
+        }
+
+        // Un admin ne peut pas reset le mot de passe d'un super_admin
+        if ($target->hasRole('super_admin') && !$me->hasRole('super_admin')) {
+            return $this->errorResponse('Vous ne pouvez pas réinitialiser le mot de passe d\'un super administrateur.', 403);
+        }
+
+        $plainPassword = $this->generateSecurePassword();
+        $target->update(['password' => Hash::make($plainPassword)]);
+
+        Mail::to($target->email)->send(new \App\Mail\WelcomeMail(
+            userName:      $target->name,
+            userEmail:     $target->email,
+            plainPassword: $plainPassword,
+            role:          $target->getRoleNames()->first() ?? '',
+        ));
+
+        AuditLog::create([
+            'user_id'    => $me->id,
+            'action'     => 'password_reset_by_admin',
+            'model_type' => User::class,
+            'model_id'   => $target->id,
+            'new_values' => ['reset_by' => $me->email],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(null, 'Mot de passe réinitialisé. Les nouveaux identifiants ont été envoyés par email à ' . $target->email . '.');
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -402,6 +701,69 @@ class AuthController extends ApiController
         return $this->successResponse(null, 'Double authentification activée avec succès.');
     }
 
+    /**
+     * POST /api/auth/revoke-all-sessions/{target}
+     * Permet à un admin de déconnecter toutes les sessions d'un compte (compte compromis).
+     */
+    public function adminRevokeAllSessions(Request $request, User $target): JsonResponse
+    {
+        $me = auth()->user();
+
+        if (!$me->hasRole(['super_admin', 'admin'])) {
+            return $this->errorResponse('Action réservée aux administrateurs.', 403);
+        }
+
+        if ($target->hasRole('super_admin') && !$me->hasRole('super_admin')) {
+            return $this->errorResponse('Vous ne pouvez pas révoquer les sessions d\'un super administrateur.', 403);
+        }
+
+        $this->deviceSession->revokeAll($target);
+
+        AuditLog::create([
+            'user_id'    => $me->id,
+            'action'     => 'sessions_revoked_by_admin',
+            'model_type' => User::class,
+            'model_id'   => $target->id,
+            'new_values' => ['revoked_by' => $me->email, 'target' => $target->email],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(null, 'Toutes les sessions de ' . $target->name . ' ont été révoquées.');
+    }
+
+    /**
+     * POST /api/auth/2fa/admin-disable/{target}
+     * Permet à un super_admin de désactiver la 2FA d'un compte bloqué (urgence).
+     * Réservé au super_admin uniquement, loggé dans AuditLog.
+     */
+    public function adminDisable2fa(Request $request, User $target): JsonResponse
+    {
+        $me = auth()->user();
+
+        if (!$me->hasRole('super_admin')) {
+            return $this->errorResponse('Action réservée au super administrateur.', 403);
+        }
+
+        if (!$target->is_2fa_enabled) {
+            return $this->errorResponse('La 2FA n\'est pas activée sur ce compte.', 409);
+        }
+
+        $this->twoFactor->disable($target);
+
+        AuditLog::create([
+            'user_id'    => $me->id,
+            'action'     => '2fa_admin_disabled',
+            'model_type' => User::class,
+            'model_id'   => $target->id,
+            'new_values' => ['disabled_by' => $me->email, 'target' => $target->email],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(null, 'Double authentification désactivée pour ' . $target->name . '. L\'utilisateur devra la réactiver à sa prochaine connexion.');
+    }
+
     /** POST /api/auth/2fa/disable — désactive 2FA après vérification du mot de passe */
     public function disable2fa(Request $request): JsonResponse
     {
@@ -444,6 +806,46 @@ class AuthController extends ApiController
     // ──────────────────────────────────────────────────────────────
     // HELPERS PRIVÉS
     // ──────────────────────────────────────────────────────────────
+
+    // ──────────────────────────────────────────────────────────────
+    // DÉBLOCAGE COMPTE VERROUILLÉ PAR ADMIN
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/auth/unlock/{target}
+     * Efface les tentatives échouées pour débloquer immédiatement un compte verrouillé.
+     */
+    public function adminUnlockAccount(Request $request, User $target): JsonResponse
+    {
+        $me = auth()->user();
+
+        if (!$me->hasRole(['super_admin', 'admin', 'gestionnaire'])) {
+            return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
+        }
+
+        // Le gestionnaire ne peut débloquer que des agents de son service
+        if ($me->hasRole('gestionnaire') && $me->service_id !== $target->service_id) {
+            return $this->errorResponse('Vous ne pouvez débloquer que les comptes de votre service.', 403);
+        }
+
+        DB::table('login_attempts')
+            ->where('email', $target->email)
+            ->where('success', false)
+            ->where('attempted_at', '>=', now()->subMinutes(15))
+            ->delete();
+
+        AuditLog::create([
+            'user_id'    => $me->id,
+            'action'     => 'account_unlocked_by_admin',
+            'model_type' => User::class,
+            'model_id'   => $target->id,
+            'new_values' => ['unlocked_by' => $me->email, 'target' => $target->email],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse(null, 'Compte de ' . $target->name . ' débloqué avec succès.');
+    }
 
     private function maskEmail(string $email): string
     {

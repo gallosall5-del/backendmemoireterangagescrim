@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasTerritorialScope;
+use App\Models\Media;
 
 /**
  * Modèle pour les victimes et impliqués dans les infractions et accidents.
@@ -36,6 +37,11 @@ class Victime extends Model
     public function accident()
     {
         return $this->belongsTo(Accident::class);
+    }
+
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'mediable');
     }
 
     // Nom complet

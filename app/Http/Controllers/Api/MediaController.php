@@ -43,6 +43,11 @@ class MediaController extends ApiController
             return $this->errorResponse('Entité introuvable.', 404);
         }
 
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canRead(auth()->user(), $model)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
+        }
+
         $media = Media::where('mediable_type', get_class($model))
             ->where('mediable_id', $id)
             ->orderByDesc('created_at')
@@ -66,6 +71,11 @@ class MediaController extends ApiController
         $model = $this->resolveModel($type, $id);
         if (!$model) {
             return $this->errorResponse('Entité introuvable.', 404);
+        }
+
+        $scopeService = app(\App\Services\ScopeAccessService::class);
+        if (!$scopeService->canWrite(auth()->user(), $model)) {
+            return $this->errorResponse('Accès territorial refusé.', 403);
         }
 
         $uploaded = [];
@@ -101,6 +111,14 @@ class MediaController extends ApiController
     {
         $media = Media::findOrFail($id);
 
+        $parent = $media->mediable;
+        if ($parent) {
+            $scopeService = app(\App\Services\ScopeAccessService::class);
+            if (!$scopeService->canRead(auth()->user(), $parent)) {
+                return $this->errorResponse('Accès territorial refusé.', 403);
+            }
+        }
+
         if (!Storage::disk('public')->exists($media->path)) {
             return $this->errorResponse('Fichier introuvable sur le serveur.', 404);
         }
@@ -117,6 +135,14 @@ class MediaController extends ApiController
         $media = Media::find($id);
         if (!$media) {
             return $this->errorResponse('Média introuvable.', 404);
+        }
+
+        $parent = $media->mediable;
+        if ($parent) {
+            $scopeService = app(\App\Services\ScopeAccessService::class);
+            if (!$scopeService->canWrite(auth()->user(), $parent)) {
+                return $this->errorResponse('Accès territorial refusé.', 403);
+            }
         }
 
         Storage::disk('public')->delete($media->path);

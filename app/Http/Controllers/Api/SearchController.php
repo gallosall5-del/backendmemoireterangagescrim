@@ -28,15 +28,19 @@ class SearchController extends ApiController
             return $this->errorResponse('La recherche doit contenir au moins 2 caractères.', 422);
         }
 
+        // Escape LIKE wildcards to prevent wildcard-exhaustion queries
+        $qSafe = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+        $qId   = is_numeric($q) ? (int)$q : -1;
+
         $results = [];
 
         if (in_array('infractions', $types)) {
             $items = Infraction::visibleByUser()
                 ->with(['typeInfraction', 'commune', 'service'])
                 ->where(fn($q2) => $q2
-                    ->where('lieu', 'ILIKE', "%{$q}%")
-                    ->orWhere('description', 'ILIKE', "%{$q}%")
-                    ->orWhere('id', is_numeric($q) ? (int)$q : -1)
+                    ->where('lieu', 'ILIKE', $qSafe)
+                    ->orWhere('description', 'ILIKE', $qSafe)
+                    ->orWhere('id', $qId)
                 )
                 ->limit($limit)
                 ->get()
@@ -56,10 +60,10 @@ class SearchController extends ApiController
             $items = Accident::visibleByUser()
                 ->with(['commune', 'service'])
                 ->where(fn($q2) => $q2
-                    ->where('lieu', 'ILIKE', "%{$q}%")
-                    ->orWhere('cause_probable', 'ILIKE', "%{$q}%")
-                    ->orWhere('description', 'ILIKE', "%{$q}%")
-                    ->orWhere('id', is_numeric($q) ? (int)$q : -1)
+                    ->where('lieu', 'ILIKE', $qSafe)
+                    ->orWhere('cause_probable', 'ILIKE', $qSafe)
+                    ->orWhere('description', 'ILIKE', $qSafe)
+                    ->orWhere('id', $qId)
                 )
                 ->limit($limit)
                 ->get()
@@ -79,10 +83,10 @@ class SearchController extends ApiController
             $items = Personnel::visibleByUser()
                 ->with(['service'])
                 ->where(fn($q2) => $q2
-                    ->where('nom', 'ILIKE', "%{$q}%")
-                    ->orWhere('prenom', 'ILIKE', "%{$q}%")
-                    ->orWhere('ccap', 'ILIKE', "%{$q}%")
-                    ->orWhere('grade', 'ILIKE', "%{$q}%")
+                    ->where('nom', 'ILIKE', $qSafe)
+                    ->orWhere('prenom', 'ILIKE', $qSafe)
+                    ->orWhere('ccap', 'ILIKE', $qSafe)
+                    ->orWhere('grade', 'ILIKE', $qSafe)
                 )
                 ->limit($limit)
                 ->get()
@@ -98,11 +102,12 @@ class SearchController extends ApiController
         }
 
         if (in_array('victimes', $types)) {
-            $items = Victime::with(['infraction', 'accident'])
+            $items = Victime::visibleByUser()
+                ->with(['infraction', 'accident'])
                 ->where(fn($q2) => $q2
-                    ->where('nom', 'ILIKE', "%{$q}%")
-                    ->orWhere('prenom', 'ILIKE', "%{$q}%")
-                    ->orWhere('no_cin_passeport', 'ILIKE', "%{$q}%")
+                    ->where('nom', 'ILIKE', $qSafe)
+                    ->orWhere('prenom', 'ILIKE', $qSafe)
+                    ->orWhere('no_cin_passeport', 'ILIKE', $qSafe)
                 )
                 ->limit($limit)
                 ->get()

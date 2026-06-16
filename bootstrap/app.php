@@ -25,7 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'verify.device' => \App\Http\Middleware\VerifyDeviceSession::class,
+            'verify.device'      => \App\Http\Middleware\VerifyDeviceSession::class,
+            'mobile.agent_only'  => \App\Http\Middleware\MobileAgentOnly::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

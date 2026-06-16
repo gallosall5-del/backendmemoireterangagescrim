@@ -14,7 +14,9 @@ class Service extends Model
 {
     use HasFactory, Auditable, HasTerritorialScope;
 
-    protected $fillable = ['nom', 'type', 'commune_id', 'adresse', 'telephone', 'email', 'latitude', 'longitude'];
+    protected $fillable = ['nom', 'type', 'commune_id', 'adresse', 'telephone', 'email', 'latitude', 'longitude', 'gere_immigration'];
+
+    protected $casts = ['gere_immigration' => 'boolean'];
 
     // Un service appartient à une commune
     public function commune()

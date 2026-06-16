@@ -5,9 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Modèle pour les notifications internes du système.
- */
 class NotificationInterne extends Model
 {
     use HasFactory;
@@ -15,7 +12,15 @@ class NotificationInterne extends Model
     protected $table = 'notifications_internes';
 
     protected $fillable = [
-        'user_id', 'titre', 'message', 'type', 'is_read', 'canal',
+        'user_id',
+        'sender_id',
+        'titre',
+        'message',
+        'type',
+        'is_read',
+        'canal',
+        'diffusion_type',
+        'target_id',
     ];
 
     protected function casts(): array
@@ -25,10 +30,16 @@ class NotificationInterne extends Model
         ];
     }
 
-    // La notification appartient à un utilisateur
+    // ========== Relations ==========
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sender()
+    {
+        return $this->belongsTo(User::class, 'sender_id');
     }
 
     // ========== Scopes ==========

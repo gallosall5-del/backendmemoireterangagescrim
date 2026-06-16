@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\ImmigrationClandestine;
+use App\Models\Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -72,6 +73,7 @@ class ImmigrationClandestineController extends ApiController
         $validator = Validator::make($request->all(), [
             'nombre_interpellation' => 'required|integer|min:0',
             'date' => 'required|date',
+            'heure' => 'nullable|date_format:H:i',
             'service_id' => 'required|exists:services,id',
             'nombre_hommes' => 'nullable|integer|min:0',
             'nombre_femmes' => 'nullable|integer|min:0',
@@ -88,6 +90,14 @@ class ImmigrationClandestineController extends ApiController
             'zone_arrivee_lng' => 'nullable|numeric|between:-180,180',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+
+        $service = Service::find($request->service_id);
+        if (!$service->gere_immigration) {
+            return $this->errorResponse(
+                'Ce service n\'est pas habilité à gérer les immigrations clandestines.',
+                403
+            );
+        }
 
         $data = $request->all();
         $data['user_id'] = auth()->id();

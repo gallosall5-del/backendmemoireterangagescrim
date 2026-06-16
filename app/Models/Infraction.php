@@ -16,8 +16,8 @@ class Infraction extends Model
     use HasFactory, Auditable, HasTerritorialScope;
 
     protected $fillable = [
-        'workflow_status',
-        'type_infraction_id', 'service_id', 'annee', 'date', 'lieu',
+        'workflow_status', 'local_id',
+        'type_infraction_id', 'service_id', 'annee', 'date', 'heure', 'lieu',
         'commune_id', 'issue', 'type_drogue', 'unite', 'quantite',
         'latitude', 'longitude', 'description', 'user_id', 'sync_status',
     ];

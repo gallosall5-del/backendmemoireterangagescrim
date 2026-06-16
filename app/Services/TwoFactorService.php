@@ -14,19 +14,29 @@ class TwoFactorService
 
     /**
      * Générer un code OTP à 6 chiffres, le stocker en cache et l'envoyer par email.
+     * Retourne false si un envoi récent est déjà en cours (cooldown 60s) pour éviter le spam.
      */
-    public function sendOtp(User $user): void
+    public function sendOtp(User $user): bool
     {
+        $cooldownKey = "otp_cooldown:{$user->id}";
+        if (Cache::has($cooldownKey)) {
+            return false;
+        }
+
         $code = $this->generateCode();
 
-        // Stocker en cache (clé unique par user)
         Cache::put(
             $this->cacheKey($user->id),
-            bcrypt($code), // stocké hashé
+            bcrypt($code),
             now()->addMinutes($this->expiresInMinutes)
         );
 
+        // Cooldown 60 secondes entre deux envois
+        Cache::put($cooldownKey, true, now()->addSeconds(60));
+
         Mail::to($user->email)->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
+
+        return true;
     }
 
     /**

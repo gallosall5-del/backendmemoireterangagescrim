@@ -2,22 +2,110 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\User;
+use App\Mail\WelcomeMail;
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 
-/**
- * Contrôleur pour la gestion des utilisateurs et rôles.
- */
 class UserController extends ApiController
 {
+    // Hiérarchie : les rôles qu'un rôle donné peut attribuer
+    private const ASSIGNABLE_ROLES = [
+        'super_admin'  => ['super_admin', 'admin', 'gestionnaire', 'superviseur', 'agent'],
+        'admin'        => ['gestionnaire', 'superviseur', 'agent'],
+        'gestionnaire' => ['gestionnaire', 'agent'],
+        'superviseur'  => [],
+        'agent'        => [],
+    ];
+
+    /**
+     * Génère un mot de passe sécurisé via CSPRNG (random_bytes).
+     * Composition garantie : majuscule, minuscule, chiffre, caractère spécial.
+     */
+    private function generateSecurePassword(int $length = 16): string
+    {
+        $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $lowercase = 'abcdefghjkmnpqrstuvwxyz';
+        $digits    = '23456789';
+        $special   = '@#$%&*!?';
+        $all       = $uppercase . $lowercase . $digits . $special;
+
+        // Garantir au moins un caractère de chaque classe
+        $password  = $uppercase[random_int(0, strlen($uppercase) - 1)];
+        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
+        $password .= $digits[random_int(0, strlen($digits) - 1)];
+        $password .= $special[random_int(0, strlen($special) - 1)];
+
+        for ($i = 4; $i < $length; $i++) {
+            $password .= $all[random_int(0, strlen($all) - 1)];
+        }
+
+        // Mélanger pour éviter que les classes soient prévisibles en position
+        $chars = str_split($password);
+        shuffle($chars);
+
+        return implode('', $chars);
+    }
+
+    private function canAssignRole(string $targetRole): bool
+    {
+        $currentRole = auth()->user()->getRoleNames()->first() ?? '';
+        return in_array($targetRole, self::ASSIGNABLE_ROLES[$currentRole] ?? [], true);
+    }
+
+    private function canManageUser(User $target): bool
+    {
+        $me          = auth()->user();
+        $currentRole = $me->getRoleNames()->first() ?? '';
+        $targetRole  = $target->getRoleNames()->first() ?? '';
+
+        if (!in_array($targetRole, self::ASSIGNABLE_ROLES[$currentRole] ?? [], true)) {
+            return false;
+        }
+
+        if ($currentRole === 'gestionnaire') {
+            return $me->service_id !== null && $me->service_id === $target->service_id;
+        }
+
+        // Le superviseur ne peut gérer que les utilisateurs rattachés à sa région
+        if ($currentRole === 'superviseur') {
+            if ($target->service_id === null) {
+                return false;
+            }
+            $target->loadMissing('service.commune.departement');
+            return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id;
+        }
+
+        return true;
+    }
     public function index(Request $request): JsonResponse
     {
+        $me          = auth()->user();
+        $currentRole = $me->getRoleNames()->first() ?? '';
+
         $query = User::with(['service', 'roles']);
+
+        // Filtrer les utilisateurs visibles selon le rôle
+        match ($currentRole) {
+            'gestionnaire' => $query->where('service_id', $me->service_id)
+                                    ->whereHas('roles', fn($q) => $q->where('name', 'agent')),
+            'superviseur'  => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
+                                    ->whereHas('service', function($sq) use ($me) {
+                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                    }),
+            'admin'        => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin']))
+                                    ->where(fn($q) => $q->whereHas('service', function($sq) use ($me) {
+                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                    })->orWhereNull('service_id')),
+            default        => null, // super_admin voit tout
+        };
+
         if ($request->has('search')) $query->search($request->search);
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('is_active')) $query->where('is_active', $request->boolean('is_active'));
@@ -34,26 +122,55 @@ class UserController extends ApiController
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-            'telephone' => 'nullable|string|max:20',
-            'service_id' => 'required_if:role,agent|required_if:role,superviseur|nullable|exists:services,id',
-            'role' => 'required|string|exists:roles,name',
-            'is_active' => 'nullable|boolean',
+            'name'             => 'required|string|max:255',
+            'email'            => 'required|email|unique:users,email',
+            'telephone'        => 'nullable|string|max:20',
+            'service_id'       => 'required_if:role,agent|required_if:role,superviseur|nullable|exists:services,id',
+            'role'             => 'required|string|exists:roles,name',
+            'is_active'        => 'nullable|boolean',
+            'read_scope_type'  => 'nullable|in:service,commune,departement,region,national',
+            'read_scope_id'    => 'nullable|integer',
+            'write_scope_type' => 'nullable|in:service,commune,departement,region,national',
+            'write_scope_id'   => 'nullable|integer',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'telephone' => $request->telephone,
-            'service_id' => $request->service_id,
-            'is_active' => $request->get('is_active', true),
-        ]);
+        if (!$this->canAssignRole($request->role)) {
+            return $this->errorResponse('Vous ne pouvez pas attribuer le rôle « ' . $request->role . ' ».', 403);
+        }
 
-        $user->assignRole($request->role);
+        $me = auth()->user();
+        if ($me->getRoleNames()->first() === 'gestionnaire') {
+            if ($request->service_id != $me->service_id) {
+                return $this->errorResponse('Vous ne pouvez créer des utilisateurs que dans votre propre service.', 403);
+            }
+        }
+
+        $plainPassword = $this->generateSecurePassword();
+
+        $user = DB::transaction(function () use ($request, $plainPassword) {
+            $user = User::create([
+                'name'             => $request->name,
+                'email'            => $request->email,
+                'password'         => Hash::make($plainPassword),
+                'telephone'        => $request->telephone,
+                'service_id'       => $request->service_id,
+                'is_active'        => $request->get('is_active', true),
+                'read_scope_type'  => $request->read_scope_type,
+                'read_scope_id'    => $request->read_scope_id,
+                'write_scope_type' => $request->write_scope_type,
+                'write_scope_id'   => $request->write_scope_id,
+            ]);
+            $user->assignRole($request->role);
+            return $user;
+        });
+
+        Mail::to($user->email)->send(new WelcomeMail(
+            userName:      $user->name,
+            userEmail:     $user->email,
+            plainPassword: $plainPassword,
+            role:          $request->role,
+        ));
 
         AuditLog::create([
             'user_id'    => auth()->id(),
@@ -65,42 +182,57 @@ class UserController extends ApiController
             'user_agent' => request()->userAgent(),
         ]);
 
-        return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur créé.', 201);
+        return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur créé. Les identifiants ont été envoyés par email.', 201);
     }
 
     public function update(Request $request, User $user): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8',
-            'telephone' => 'nullable|string|max:20',
-            'service_id' => 'nullable|exists:services,id',
-            'role' => 'nullable|string|exists:roles,name',
-            'is_active' => 'nullable|boolean',
+            'name'             => 'sometimes|string|max:255',
+            'email'            => 'sometimes|email|unique:users,email,' . $user->id,
+            'password'         => 'nullable|string|min:8',
+            'telephone'        => 'nullable|string|max:20',
+            'service_id'       => 'nullable|exists:services,id',
+            'role'             => 'nullable|string|exists:roles,name',
+            'is_active'        => 'nullable|boolean',
+            'read_scope_type'  => 'nullable|in:service,commune,departement,region,national',
+            'read_scope_id'    => 'nullable|integer',
+            'write_scope_type' => 'nullable|in:service,commune,departement,region,national',
+            'write_scope_id'   => 'nullable|integer',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+
+        if (!$this->canManageUser($user)) {
+            return $this->errorResponse('Vous ne pouvez pas modifier cet utilisateur.', 403);
+        }
+
+        if ($request->filled('role') && !$this->canAssignRole($request->role)) {
+            return $this->errorResponse('Vous ne pouvez pas attribuer le rôle « ' . $request->role . ' ».', 403);
+        }
 
         $data = $request->except(['password', 'role']);
         if ($request->filled('password')) $data['password'] = Hash::make($request->password);
 
         $oldRole = $user->getRoleNames()->first();
-        $user->update($data);
-        if ($request->filled('role')) {
-            $user->syncRoles([$request->role]);
-            if ($oldRole !== $request->role) {
-                AuditLog::create([
-                    'user_id'    => auth()->id(),
-                    'action'     => 'role_changed',
-                    'model_type' => User::class,
-                    'model_id'   => $user->id,
-                    'old_values' => ['role' => $oldRole],
-                    'new_values' => ['role' => $request->role],
-                    'ip_address' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
-                ]);
+
+        DB::transaction(function () use ($user, $data, $request, $oldRole) {
+            $user->update($data);
+            if ($request->filled('role')) {
+                $user->syncRoles([$request->role]);
+                if ($oldRole !== $request->role) {
+                    AuditLog::create([
+                        'user_id'    => auth()->id(),
+                        'action'     => 'role_changed',
+                        'model_type' => User::class,
+                        'model_id'   => $user->id,
+                        'old_values' => ['role' => $oldRole],
+                        'new_values' => ['role' => $request->role],
+                        'ip_address' => request()->ip(),
+                        'user_agent' => request()->userAgent(),
+                    ]);
+                }
             }
-        }
+        });
 
         return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur mis à jour.');
     }
@@ -109,6 +241,10 @@ class UserController extends ApiController
     {
         if ($user->id === auth()->id()) {
             return $this->errorResponse('Vous ne pouvez pas supprimer votre propre compte.', 403);
+        }
+
+        if (!$this->canManageUser($user)) {
+            return $this->errorResponse('Vous ne pouvez pas supprimer cet utilisateur.', 403);
         }
 
         AuditLog::create([

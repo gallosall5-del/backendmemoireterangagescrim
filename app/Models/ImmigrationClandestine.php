@@ -18,8 +18,8 @@ class ImmigrationClandestine extends Model
     protected $table = 'immigrations_clandestines';
 
     protected $fillable = [
-        'workflow_status',
-        'nombre_interpellation', 'date', 'service_id',
+        'workflow_status', 'local_id',
+        'nombre_interpellation', 'date', 'heure', 'service_id',
         'nombre_hommes', 'nombre_femmes', 'nombre_enfants',
         'nombre_maries', 'nombre_celibataires',
         'nombre_senegalais', 'nombre_etrangers',

@@ -139,8 +139,17 @@ class DashboardController extends ApiController
      */
     public function infractionsParRegion(Request $request): JsonResponse
     {
-        $annee  = $request->get('annee');
-        $mois   = $request->get('mois');
+        $request->validate([
+            'annee'          => 'nullable|integer|min:2000|max:2100',
+            'mois'           => 'nullable|integer|min:1|max:12',
+            'region_id'      => 'nullable|integer|min:1',
+            'departement_id' => 'nullable|integer|min:1',
+            'commune_id'     => 'nullable|integer|min:1',
+            'service_id'     => 'nullable|integer|min:1',
+        ]);
+
+        $annee  = $request->integer('annee') ?: null;
+        $mois   = $request->integer('mois') ?: null;
         $user   = auth()->user();
 
         $query = DB::table('infractions')
@@ -151,14 +160,14 @@ class DashboardController extends ApiController
         if ($annee) $query->where('infractions.annee', $annee);
 
         if ($mois) {
-            $query->whereMonth('infractions.date', (int)$mois);
+            $query->whereMonth('infractions.date', $mois);
         }
 
         // Filtres geo frontend
-        if ($request->has('region_id'))     $query->where('regions.id',       $request->region_id);
-        if ($request->has('departement_id'))$query->where('departements.id',  $request->departement_id);
-        if ($request->has('commune_id'))    $query->where('communes.id',       $request->commune_id);
-        if ($request->has('service_id'))    $query->where('infractions.service_id', $request->service_id);
+        if ($request->filled('region_id'))     $query->where('regions.id',       (int)$request->region_id);
+        if ($request->filled('departement_id'))$query->where('departements.id',  (int)$request->departement_id);
+        if ($request->filled('commune_id'))    $query->where('communes.id',       (int)$request->commune_id);
+        if ($request->filled('service_id'))    $query->where('infractions.service_id', (int)$request->service_id);
 
         // Scope territorial
         if ($user->read_scope_type !== ScopeType::NATIONAL) {
@@ -300,6 +309,74 @@ class DashboardController extends ApiController
             ->get();
 
         return $this->successResponse($data);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/dashboard/saisies-par-heure",
+     *     tags={"Dashboard"},
+     *     summary="Distribution des saisies par heure de la journée",
+     *     description="Retourne pour chaque heure (0-23) le nombre de saisies enregistrées via created_at et via le champ heure. Utile pour identifier les pics d'activité terrain.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="annee",      in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="mois",       in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=12)),
+     *     @OA\Parameter(name="region_id",  in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="service_id", in="query", required=false, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Distribution horaire retournée")
+     * )
+     */
+    public function saisiesParHeure(Request $request): JsonResponse
+    {
+        $annee  = $request->get('annee');
+        $mois   = $request->get('mois');
+        $svcId  = $request->get('service_id');
+
+        $infQuery = $this->applyInfractionFilters(Infraction::visibleByUser(), $request);
+        $accQuery = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
+
+        // Distribution par heure de saisie (created_at) — toutes entités confondues
+        $buildHourQuery = function ($query, string $table) use ($annee, $mois, $svcId) {
+            if ($annee) $query->whereYear('created_at', $annee);
+            if ($mois)  $query->whereMonth('created_at', (int)$mois);
+            if ($svcId) $query->where('service_id', $svcId);
+            return $query->select(
+                DB::raw('EXTRACT(HOUR FROM created_at)::int as heure'),
+                DB::raw('COUNT(*) as total')
+            )->groupBy(DB::raw('EXTRACT(HOUR FROM created_at)::int'))
+             ->orderBy('heure');
+        };
+
+        $infraHeureSaisie = $buildHourQuery(Infraction::visibleByUser(), 'infractions')->get()->keyBy('heure');
+        $accHeureSaisie   = $buildHourQuery(Accident::visibleByUser(), 'accidents')->get()->keyBy('heure');
+
+        // Distribution par heure de l'événement (champ heure) — infractions et accidents
+        $infraHeureEvenement = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)
+            ->whereNotNull('heure')
+            ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
+            ->orderBy('heure')
+            ->get()->keyBy('heure');
+
+        $accHeureEvenement = $this->applyAccidentFilters(Accident::visibleByUser(), $request)
+            ->whereNotNull('heure')
+            ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
+            ->orderBy('heure')
+            ->get()->keyBy('heure');
+
+        // Construire un tableau complet 0-23
+        $heures = [];
+        for ($h = 0; $h < 24; $h++) {
+            $heures[] = [
+                'heure'                      => $h,
+                'infractions_saisies'        => $infraHeureSaisie->get($h)?->total ?? 0,
+                'accidents_saisis'           => $accHeureSaisie->get($h)?->total ?? 0,
+                'infractions_evenement'      => $infraHeureEvenement->get($h)?->total ?? 0,
+                'accidents_evenement'        => $accHeureEvenement->get($h)?->total ?? 0,
+            ];
+        }
+
+        return $this->successResponse($heures, 'Distribution horaire des saisies.');
     }
 
     /**

@@ -50,8 +50,14 @@ class RegionController extends ApiController
      */
     public function all(): JsonResponse
     {
-        $regions = Region::orderBy('nom')->get();
-        return $this->successResponse($regions);
+        $user = auth()->user();
+        $query = Region::orderBy('nom');
+
+        if ($user->read_scope_type === \App\Enums\ScopeType::REGION) {
+            $query->where('id', $user->read_scope_id);
+        }
+
+        return $this->successResponse($query->get());
     }
 
     /**

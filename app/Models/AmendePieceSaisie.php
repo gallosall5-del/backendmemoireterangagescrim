@@ -17,8 +17,8 @@ class AmendePieceSaisie extends Model
     protected $table = 'amendes_pieces_saisies';
 
     protected $fillable = [
-        'workflow_status',
-        'type', 'service_id', 'date', 'montant', 'description', 'user_id',
+        'workflow_status', 'local_id',
+        'type', 'service_id', 'date', 'heure', 'montant', 'description', 'user_id',
     ];
 
     protected function casts(): array

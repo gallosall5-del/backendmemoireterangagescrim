@@ -26,9 +26,18 @@ class RecaptchaService
      */
     public function verify(?string $token, ?string $ip = null, ?string $expectedAction = null): array
     {
-        // Token vide ou pas de clé configurée → laisser passer
-        if (empty($this->secretKey) || empty($token)) {
+        if (empty($this->secretKey)) {
+            Log::warning('reCAPTCHA secret key not configured — skipping verification.');
             return ['valid' => true, 'score' => 1.0, 'action' => $expectedAction ?? 'login'];
+        }
+
+        if (empty($token)) {
+            // En local/testing, token vide = pas de reCAPTCHA configuré côté frontend → fail-open
+            if (app()->environment(['local', 'testing'])) {
+                Log::info('reCAPTCHA token absent en environnement local — skip.');
+                return ['valid' => true, 'score' => 1.0, 'action' => $expectedAction ?? 'login'];
+            }
+            return ['valid' => false, 'score' => 0.0, 'action' => $expectedAction ?? 'login', 'errors' => ['missing-input-response']];
         }
 
         try {
@@ -61,7 +70,8 @@ class RecaptchaService
             return ['valid' => $valid, 'score' => $score, 'action' => $action];
 
         } catch (\Throwable $e) {
-            // Network failure → log but don't block the user
+            // Fail-open intentionnel : si l'API Google est injoignable, on laisse passer
+            // et on log un warning uniquement — exigence du cahier des charges.
             Log::warning('reCAPTCHA API unreachable: ' . $e->getMessage());
             return ['valid' => true, 'score' => 0.5, 'action' => $expectedAction ?? '', 'network_error' => true];
         }

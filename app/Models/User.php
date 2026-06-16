@@ -106,9 +106,10 @@ class User extends Authenticatable implements JWTSubject
 
     public function scopeSearch($query, $search)
     {
-        return $query->where(function ($q) use ($search) {
-            $q->where('name', 'ILIKE', "%{$search}%")
-              ->orWhere('email', 'ILIKE', "%{$search}%");
+        $safe = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+        return $query->where(function ($q) use ($safe) {
+            $q->where('name', 'ILIKE', $safe)
+              ->orWhere('email', 'ILIKE', $safe);
         });
     }
 
