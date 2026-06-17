@@ -28,6 +28,10 @@ RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions sto
 # Caddyfile Railway
 COPY Caddyfile /etc/caddy/Caddyfile
 
+# Script de démarrage
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 EXPOSE 8080
 
-CMD ["/bin/sh", "-c", "php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && frankenphp run --config /etc/caddy/Caddyfile"]
+CMD ["/app/start.sh"]
