@@ -1,17 +1,14 @@
 {
-    # FrankenPHP — désactiver HTTPS automatique (Railway gère le TLS)
     auto_https off
     frankenphp
+    admin off
 }
 
-:8080 {
+:{$PORT:8080} {
     root * /app/public
     encode gzip
-
-    # Laravel front-controller
     php_server
 
-    # Logs
     log {
         output stderr
         format console
