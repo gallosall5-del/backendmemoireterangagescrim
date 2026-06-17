@@ -1,12 +1,11 @@
-FROM php:8.4-cli
+FROM dunglas/frankenphp:latest-php8.3
 
-# Build v2 - PHP 8.4
-# Extensions système
+# Extensions système nécessaires
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip libpq-dev libzip-dev libpng-dev libxml2-dev \
+    libpq-dev libzip-dev libpng-dev libxml2-dev \
     libonig-dev libfreetype6-dev libjpeg62-turbo-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring zip xml bcmath gd opcache \
+    && install-php-extensions pdo pdo_pgsql pgsql mbstring zip xml bcmath gd opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Composer
@@ -14,7 +13,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Dépendances PHP
+# Dépendances PHP (sans scripts pour éviter artisan avant config)
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
@@ -23,12 +22,12 @@ COPY . .
 
 # Permissions storage
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views \
-    && chmod -R 775 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
-# Démarrage
+# Caddyfile Railway
+COPY Caddyfile /etc/caddy/Caddyfile
+
 EXPOSE 8080
-CMD php artisan config:clear && \
-    php artisan migrate --force && \
-    php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan serve --host=0.0.0.0 --port=8080
+
+CMD ["/bin/sh", "-c", "php artisan config:clear && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && frankenphp run --config /etc/caddy/Caddyfile"]
