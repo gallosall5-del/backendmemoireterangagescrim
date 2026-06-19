@@ -4,13 +4,15 @@ namespace App\Services\Export;
 
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Style\Font;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Response;
 
 class WordExportService
 {
     /**
      * Génère un fichier .docx et le retourne en téléchargement.
+     * Passe par un fichier temporaire pour éviter la corruption du ZIP OOXML
+     * par les octets parasites (CORS/session headers) que Laravel peut injecter
+     * dans php://output avant la réponse.
      *
      * @param string $title    Titre du document
      * @param string $subtitle Sous-titre (module + période)
@@ -26,7 +28,7 @@ class WordExportService
         array  $headers,
         array  $rows,
         string $filename
-    ): StreamedResponse {
+    ): Response {
         $word = new PhpWord();
         $word->setDefaultFontName('Arial');
         $word->setDefaultFontSize(10);
@@ -99,15 +101,22 @@ class WordExportService
             ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
         );
 
+        // Écrire dans un fichier temporaire pour garantir l'intégrité du ZIP OOXML
+        $tmpPath  = tempnam(sys_get_temp_dir(), 'gescrim_docx_');
+        $writer   = IOFactory::createWriter($word, 'Word2007');
+        $writer->save($tmpPath);
+
+        $content  = file_get_contents($tmpPath);
+        unlink($tmpPath);
+
         $fullName = $filename . '_' . now()->format('Y-m-d') . '.docx';
 
-        return response()->stream(function () use ($word) {
-            $writer = IOFactory::createWriter($word, 'Word2007');
-            $writer->save('php://output');
-        }, 200, [
+        return response($content, 200, [
             'Content-Type'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename="' . $fullName . '"',
-            'Cache-Control'       => 'no-cache, no-store',
+            'Content-Length'      => strlen($content),
+            'Cache-Control'       => 'no-cache, no-store, must-revalidate',
+            'Pragma'              => 'no-cache',
         ]);
     }
 }

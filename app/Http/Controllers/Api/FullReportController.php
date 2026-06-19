@@ -368,13 +368,19 @@ class FullReportController extends ApiController
 
         $fullName = 'rapport_complet_gescrim_' . now()->format('Y-m-d') . '.docx';
 
-        return response()->stream(function () use ($word) {
-            $writer = IOFactory::createWriter($word, 'Word2007');
-            $writer->save('php://output');
-        }, 200, [
+        // Fichier temporaire pour éviter la corruption du ZIP OOXML par les middleware Laravel
+        $tmpPath = tempnam(sys_get_temp_dir(), 'gescrim_full_docx_');
+        $writer  = IOFactory::createWriter($word, 'Word2007');
+        $writer->save($tmpPath);
+        $content = file_get_contents($tmpPath);
+        unlink($tmpPath);
+
+        return response($content, 200, [
             'Content-Type'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename="' . $fullName . '"',
-            'Cache-Control'       => 'no-cache, no-store',
+            'Content-Length'      => strlen($content),
+            'Cache-Control'       => 'no-cache, no-store, must-revalidate',
+            'Pragma'              => 'no-cache',
         ]);
     }
 

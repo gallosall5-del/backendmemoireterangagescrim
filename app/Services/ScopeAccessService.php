@@ -204,23 +204,41 @@ class ScopeAccessService
     }
 
     /**
-     * Applique les filtres de territoire sur une colonne commune_id
+     * Applique les filtres de territoire sur une colonne commune_id.
+     * Les enregistrements avec commune_id NULL (saisies terrain sans commune précise)
+     * sont rattachés via leur service_id — on les inclut si le service est dans le territoire.
      */
     protected function filterByCommuneScope(Builder $query, string $communeColumn, ScopeType $scopeType, int $scopeId): Builder
     {
+        $table = explode('.', $communeColumn)[0];
+
         if ($scopeType === ScopeType::COMMUNE) {
-            return $query->where($communeColumn, $scopeId);
+            return $query->where(function ($q) use ($communeColumn, $scopeId, $table) {
+                $q->where($communeColumn, $scopeId)
+                  ->orWhere(function ($q2) use ($communeColumn, $scopeId, $table) {
+                      $q2->whereNull($communeColumn)
+                         ->whereHas('service', fn($s) => $s->where('commune_id', $scopeId));
+                  });
+            });
         }
 
         if ($scopeType === ScopeType::DEPARTEMENT) {
-            return $query->whereHas('commune', function ($q) use ($scopeId) {
-                $q->where('departement_id', $scopeId);
+            return $query->where(function ($q) use ($communeColumn, $scopeId) {
+                $q->whereHas('commune', fn($c) => $c->where('departement_id', $scopeId))
+                  ->orWhere(function ($q2) use ($communeColumn, $scopeId) {
+                      $q2->whereNull($communeColumn)
+                         ->whereHas('service.commune', fn($c) => $c->where('departement_id', $scopeId));
+                  });
             });
         }
 
         if ($scopeType === ScopeType::REGION) {
-            return $query->whereHas('commune.departement', function ($q) use ($scopeId) {
-                $q->where('region_id', $scopeId);
+            return $query->where(function ($q) use ($communeColumn, $scopeId) {
+                $q->whereHas('commune.departement', fn($d) => $d->where('region_id', $scopeId))
+                  ->orWhere(function ($q2) use ($communeColumn, $scopeId) {
+                      $q2->whereNull($communeColumn)
+                         ->whereHas('service.commune.departement', fn($d) => $d->where('region_id', $scopeId));
+                  });
             });
         }
 
