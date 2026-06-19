@@ -20,6 +20,7 @@ class Infraction extends Model
         'type_infraction_id', 'service_id', 'annee', 'date', 'heure', 'lieu',
         'commune_id', 'issue', 'type_drogue', 'unite', 'quantite',
         'latitude', 'longitude', 'description', 'user_id', 'sync_status',
+        'montant_amende', 'plaque_vehicule',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class Infraction extends Model
             'quantite' => 'decimal:2',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
+            'montant_amende' => 'decimal:2',
         ];
     }
 

@@ -165,6 +165,10 @@ class ScopeAccessService
         // Modèles avec service_id (priorité au service)
         if (\Schema::hasColumn($table, 'service_id')) {
             if ($scopeType === ScopeType::SERVICE) {
+                $user = auth()->user();
+                if ($user && $user->hasRole('agent') && \Schema::hasColumn($table, 'user_id')) {
+                    return $query->where($table . '.user_id', $user->id);
+                }
                 return $query->where($table . '.service_id', $scopeId);
             }
             

@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\FullReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -213,6 +214,9 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     Route::post('/accidents/export',    [AdvancedExportController::class, 'accidents'])->middleware('permission:export.pdf|export.csv');
     Route::post('/infractions/export',  [AdvancedExportController::class, 'infractions'])->middleware('permission:export.pdf|export.csv');
     Route::post('/immigrations/export', [AdvancedExportController::class, 'immigrations'])->middleware('permission:export.pdf|export.csv');
+
+    // --- Rapport complet consolidé (un seul fichier avec toutes les données) ---
+    Route::post('/export/full-report', [FullReportController::class, 'generate'])->middleware('permission:export.pdf|export.csv');
 
     // --- Synchronisation offline ---
     Route::prefix('sync')->group(function () {

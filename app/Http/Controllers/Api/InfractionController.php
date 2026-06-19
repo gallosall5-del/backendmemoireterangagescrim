@@ -146,6 +146,8 @@ class InfractionController extends ApiController
             'longitude' => 'nullable|numeric|between:-18,-11',
             'description' => 'nullable|string',
             'sync_status' => 'nullable|in:pending,synced',
+            'montant_amende' => 'nullable|numeric|min:0',
+            'plaque_vehicule' => 'nullable|string|max:20',
         ], [
             'type_infraction_id.required' => 'Le type d\'infraction est obligatoire.',
             'service_id.required' => 'Le service est obligatoire.',
@@ -217,6 +219,8 @@ class InfractionController extends ApiController
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'description' => 'nullable|string',
+            'montant_amende' => 'nullable|numeric|min:0',
+            'plaque_vehicule' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {

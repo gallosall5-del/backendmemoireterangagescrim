@@ -97,7 +97,6 @@ class RolePermissionSeeder extends Seeder
             'infractions.view', 'infractions.create', 'infractions.update',
             'accidents.view', 'accidents.create', 'accidents.update',
             'victimes.view', 'victimes.create', 'victimes.update',
-            'services-remuneres.view', 'services-remuneres.create',
             'amendes.view', 'amendes.create',
             'immigrations.view', 'immigrations.create',
             'dashboard.view',
