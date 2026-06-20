@@ -22,6 +22,15 @@ done
 echo "--- migrate ---" >&2
 php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
+echo "--- seed (if needed) ---" >&2
+USER_COUNT=$(php /app/artisan tinker --execute="echo \App\Models\User::count();" 2>/dev/null | tail -1)
+if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
+    echo "  No users found, running full seed..." >&2
+    php /app/artisan db:seed --force 2>&1 || echo "WARNING: seed failed" >&2
+else
+    echo "  $USER_COUNT users already exist, skipping seed." >&2
+fi
+
 echo "--- caching config ---" >&2
 php /app/artisan config:cache 2>&1
 php /app/artisan route:cache 2>&1
