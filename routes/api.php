@@ -35,15 +35,10 @@ use App\Http\Controllers\Api\FullReportController;
 */
 
 // ========== Health check Railway ==========
-Route::get('health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]));
+Route::get('health', [\App\Http\Controllers\Api\HealthController::class, 'index']);
 
 // Route temporaire — affiche le dernier code OTP généré (pour tests sans SMTP)
-Route::get('debug-otp/{email}', function (string $email) {
-    $user = \App\Models\User::where('email', $email)->first();
-    if (!$user) return response()->json(['error' => 'user not found'], 404);
-    $plain = \Illuminate\Support\Facades\Cache::get("otp_plain:{$user->id}");
-    return response()->json(['code' => $plain ?? 'not_available']);
-});
+Route::get('debug-otp/{email}', [\App\Http\Controllers\Api\DebugOtpController::class, 'show']);
 
 
 
