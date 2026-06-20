@@ -22,10 +22,10 @@ done
 echo "--- migrate ---" >&2
 php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
-echo "--- config cache ---" >&2
+echo "--- caching config ---" >&2
 php /app/artisan config:cache 2>&1
 php /app/artisan route:cache 2>&1
 php /app/artisan view:cache 2>&1
 
-echo "--- starting FrankenPHP on :${PORT:-8080} ---" >&2
-exec frankenphp run --config /etc/caddy/Caddyfile
+echo "--- starting PHP server on :${PORT:-8080} ---" >&2
+exec php -S 0.0.0.0:${PORT:-8080} -t /app/public /app/public/index.php
