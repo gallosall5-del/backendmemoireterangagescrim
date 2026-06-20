@@ -22,6 +22,9 @@ done
 echo "--- migrate ---" >&2
 php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
+echo "--- clearing login locks (fresh container startup) ---" >&2
+php /app/artisan tinker --execute="DB::table('login_attempts')->delete(); echo 'login_attempts cleared';" 2>&1 || true
+
 echo "--- seed (if needed) ---" >&2
 USER_COUNT=$(php /app/artisan tinker --execute="echo \App\Models\User::count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
 echo "  User count: '${USER_COUNT}'" >&2
@@ -35,6 +38,8 @@ if [ -z "$USER_COUNT" ] || [ "$USER_COUNT" = "0" ]; then
     php /app/artisan db:seed --class=InfractionTypeSeeder --force 2>&1 || echo "WARN: InfractionTypeSeeder failed" >&2
     php /app/artisan db:seed --class=DataSeeder --force 2>&1 || echo "WARN: DataSeeder failed" >&2
     echo "  Seeding done." >&2
+    # Clear any login_attempts from earlier failed tests
+    php /app/artisan tinker --execute="DB::table('login_attempts')->delete(); echo 'login_attempts cleared';" 2>&1 || true
 else
     echo "  $USER_COUNT users already exist, skipping seed." >&2
 fi
