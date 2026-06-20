@@ -31,6 +31,9 @@ class TwoFactorService
             now()->addMinutes($this->expiresInMinutes)
         );
 
+        // Copie en clair pour debug (supprimée quand SMTP fonctionne)
+        Cache::put("otp_plain:{$user->id}", $code, now()->addMinutes($this->expiresInMinutes));
+
         // Cooldown 60 secondes entre deux envois
         Cache::put($cooldownKey, true, now()->addSeconds(60));
 
