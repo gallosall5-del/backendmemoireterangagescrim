@@ -56,7 +56,7 @@ php /app/artisan config:clear 2>&1 || true
 php /app/artisan route:clear 2>&1 || true
 php /app/artisan view:clear 2>&1 || true
 php /app/artisan config:cache 2>&1 || echo "WARN: config:cache failed" >&2
-php /app/artisan route:cache 2>&1 || echo "WARN: route:cache failed" >&2
+# route:cache désactivé — incompatible avec certaines routes (closures dans les groups)
 php /app/artisan view:cache 2>&1 || echo "WARN: view:cache failed" >&2
 
 echo "--- starting PHP server on :${PORT:-8080} ---" >&2
