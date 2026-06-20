@@ -52,9 +52,12 @@ echo "--- enabling 2FA for all users ---" >&2
 php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
 
 echo "--- caching config ---" >&2
-php /app/artisan config:cache 2>&1
-php /app/artisan route:cache 2>&1
-php /app/artisan view:cache 2>&1
+php /app/artisan config:clear 2>&1 || true
+php /app/artisan route:clear 2>&1 || true
+php /app/artisan view:clear 2>&1 || true
+php /app/artisan config:cache 2>&1 || echo "WARN: config:cache failed" >&2
+php /app/artisan route:cache 2>&1 || echo "WARN: route:cache failed" >&2
+php /app/artisan view:cache 2>&1 || echo "WARN: view:cache failed" >&2
 
 echo "--- starting PHP server on :${PORT:-8080} ---" >&2
 exec php -S 0.0.0.0:${PORT:-8080} -t /app/public /app/public/index.php

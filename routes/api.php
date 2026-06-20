@@ -37,15 +37,6 @@ use App\Http\Controllers\Api\FullReportController;
 // ========== Health check Railway ==========
 Route::get('health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]));
 
-// ========== Debug (TEMPORARY — remove after go-live) ==========
-Route::get('debug-users', function () {
-    if (app()->environment('production')) {
-        $users = \App\Models\User::with('roles:name')->orderBy('id')->limit(30)->get()
-            ->map(fn($u) => ['id' => $u->id, 'email' => $u->email, 'role' => $u->roles->first()?->name, 'service_id' => $u->service_id]);
-        return response()->json(['count' => \App\Models\User::count(), 'services' => \App\Models\Service::count(), 'users' => $users]);
-    }
-    return response()->json(['disabled' => true]);
-});
 
 // ========== Authentification ==========
 Route::prefix('auth')->group(function () {
