@@ -39,10 +39,10 @@ Route::get('health', fn () => response()->json(['status' => 'ok', 'timestamp' =>
 
 Route::get('debug-error', function () {
     try {
-        $user = \App\Models\User::first();
-        return response()->json(['ok' => true, 'user' => $user?->email]);
+        $ctrl = app(\App\Http\Controllers\Api\Auth\AuthController::class);
+        return response()->json(['ok' => true, 'ctrl' => get_class($ctrl)]);
     } catch (\Throwable $e) {
-        return response()->json(['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], 500);
+        return response()->json(['error' => $e->getMessage(), 'file' => basename($e->getFile()), 'line' => $e->getLine()], 500);
     }
 });
 
