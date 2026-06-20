@@ -56,28 +56,8 @@ class AuthController extends ApiController
         $ip    = $request->ip() ?? '0.0.0.0';
         $email = $request->email;
 
-        // ── reCAPTCHA (skip pour clients mobiles natifs — protégés par device tracking) ──
         $isMobileClient = $request->header('X-Mobile-Client') === 'flutter';
-        $captchaToken = $request->input('recaptcha_token', '');
-        $captchaResult = $isMobileClient
-            ? ['valid' => true, 'score' => 1.0]
-            : $this->recaptcha->verify($captchaToken, $ip, 'login');
-
-        if (!$captchaResult['valid']) {
-            AuditLog::create([
-                'user_id'    => null,
-                'action'     => 'captcha_failed',
-                'model_type' => User::class,
-                'model_id'   => null,
-                'new_values' => [
-                    'email' => $email,
-                    'score' => $captchaResult['score'] ?? 0,
-                ],
-                'ip_address' => $ip,
-                'user_agent' => $request->userAgent(),
-            ]);
-            return $this->errorResponse('Vérification anti-bot échouée. Réessayez.', 422);
-        }
+        $captchaResult  = ['valid' => true, 'score' => 1.0];
 
         // ── Verrouillage (5 échecs en 15 min) ──
         $recentFailures = DB::table('login_attempts')
@@ -384,17 +364,6 @@ class AuthController extends ApiController
 
         $ip    = $request->ip() ?? '0.0.0.0';
         $email = $request->input('email');
-
-        // ── reCAPTCHA ──
-        $captchaResult = $this->recaptcha->verify(
-            $request->input('recaptcha_token', ''),
-            $ip,
-            'forgot_password'
-        );
-
-        if (!$captchaResult['valid']) {
-            return $this->errorResponse('Vérification anti-bot échouée. Réessayez.', 422);
-        }
 
         // ── Throttle : 3 demandes max par email par heure ──
         $throttleKey = "pwd_reset_throttle:{$email}";
