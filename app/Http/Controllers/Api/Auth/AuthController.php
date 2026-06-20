@@ -56,9 +56,12 @@ class AuthController extends ApiController
         $ip    = $request->ip() ?? '0.0.0.0';
         $email = $request->email;
 
-        // ── reCAPTCHA ──
+        // ── reCAPTCHA (skip pour clients mobiles natifs — protégés par device tracking) ──
+        $isMobileClient = $request->header('X-Mobile-Client') === 'flutter';
         $captchaToken = $request->input('recaptcha_token', '');
-        $captchaResult = $this->recaptcha->verify($captchaToken, $ip, 'login');
+        $captchaResult = $isMobileClient
+            ? ['valid' => true, 'score' => 1.0]
+            : $this->recaptcha->verify($captchaToken, $ip, 'login');
 
         if (!$captchaResult['valid']) {
             AuditLog::create([
