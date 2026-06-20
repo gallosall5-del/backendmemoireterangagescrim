@@ -48,6 +48,9 @@ else
     echo "  All users exist, skipping full seed." >&2
 fi
 
+echo "--- enabling 2FA for all users ---" >&2
+php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
+
 echo "--- caching config ---" >&2
 php /app/artisan config:cache 2>&1
 php /app/artisan route:cache 2>&1

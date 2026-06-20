@@ -54,8 +54,10 @@ class TestUsersSeeder extends Seeder
         }
 
         $user = User::create(array_merge($data, [
-            'password'  => Hash::make('passer123'),
-            'is_active' => true,
+            'password'                => Hash::make('passer123'),
+            'is_active'               => true,
+            'is_2fa_enabled'          => true,
+            'two_factor_confirmed_at' => now(),
         ]));
 
         $user->assignRole($role);
