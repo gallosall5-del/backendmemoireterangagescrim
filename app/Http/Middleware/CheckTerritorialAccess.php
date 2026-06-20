@@ -22,7 +22,11 @@ class CheckTerritorialAccess
 
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        try {
+            $user = auth('api')->check() ? auth('api')->user() : null;
+        } catch (\Throwable) {
+            return $next($request);
+        }
         if (!$user) return $next($request);
 
         // Si la requête modifie ou crée des données qui contiennent commune_id ou service_id

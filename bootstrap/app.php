@@ -73,6 +73,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (JWTException $e, Request $request) {
             if ($request->is('api/*')) {
+                $middlewares = $request->route()?->gatherMiddleware() ?? [];
+                $requiresAuth = in_array('auth:api', $middlewares)
+                    || collect($middlewares)->contains(fn($m) => str_starts_with((string)$m, 'auth'));
+                if (!$requiresAuth) {
+                    return null; // laisser passer — route publique
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Token absent. Veuillez vous connecter.',
