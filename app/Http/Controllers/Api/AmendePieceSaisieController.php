@@ -16,7 +16,7 @@ class AmendePieceSaisieController extends ApiController
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('date_from') && $request->has('date_to')) $query->byDateRange($request->date_from, $request->date_to);
 
-        return $this->paginatedResponse($query->orderByDesc('date')->paginate($request->get('per_page', 15)));
+        return $this->paginatedResponse($query->orderByDesc('date')->paginate(min((int) $request->get('per_page', 15), 100)));
     }
 
     public function show(AmendePieceSaisie $amendePieceSaisie): JsonResponse

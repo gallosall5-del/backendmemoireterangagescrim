@@ -55,7 +55,7 @@ class AccidentController extends ApiController
 
         $accidents = $query->withCount('victimes')
             ->orderByDesc('date')
-            ->paginate($request->get('per_page', 15));
+            ->paginate(min((int) $request->get('per_page', 15), 100));
 
         return $this->paginatedResponse($accidents);
     }
@@ -134,7 +134,11 @@ class AccidentController extends ApiController
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $data = $request->all();
+        $data = $request->only([
+            'type', 'date', 'heure', 'lieu', 'commune_id',
+            'service_id', 'moyen', 'cause_probable',
+            'latitude', 'longitude', 'description', 'sync_status',
+        ]);
         $data['user_id'] = auth()->id();
 
         $accident = Accident::create($data);
@@ -180,16 +184,23 @@ class AccidentController extends ApiController
             'service_id' => 'sometimes|exists:services,id',
             'moyen' => 'nullable|string|max:255',
             'cause_probable' => 'nullable|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:12,17',
+            'longitude' => 'nullable|numeric|between:-18,-11',
             'description' => 'nullable|string',
+        ], [
+            'latitude.between' => 'La latitude doit être comprise entre 12 et 17 (territoire sénégalais).',
+            'longitude.between' => 'La longitude doit être comprise entre -18 et -11 (territoire sénégalais).',
         ]);
 
         if ($validator->fails()) {
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $accident->update($request->all());
+        $accident->update($request->only([
+            'type', 'date', 'heure', 'lieu', 'commune_id',
+            'service_id', 'moyen', 'cause_probable',
+            'latitude', 'longitude', 'description',
+        ]));
 
         return $this->successResponse(
             $accident->load(['service', 'commune']),

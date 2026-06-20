@@ -51,7 +51,7 @@ class AuditLogController extends ApiController
         }
 
         return $this->paginatedResponse(
-            $query->orderByDesc('created_at')->paginate($request->get('per_page', 50))
+            $query->orderByDesc('created_at')->paginate(min((int) $request->get('per_page', 50), 100))
         );
     }
 

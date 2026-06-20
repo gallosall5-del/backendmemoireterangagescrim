@@ -31,8 +31,11 @@ class VerifyDeviceSession
             ?? $request->cookie('device_id');
 
         if (!$deviceId) {
-            // Pas de device_id : on laisse passer (premier accès, appli mobile, etc.)
-            return $next($request);
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant d\'appareil manquant.',
+                'code'    => 'MISSING_DEVICE_ID',
+            ], 401);
         }
 
         $info = $this->deviceSession->verify($user, $request, $deviceId);

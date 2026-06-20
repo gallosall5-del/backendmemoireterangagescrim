@@ -5,12 +5,22 @@ echo "PORT=${PORT:-8080}" >&2
 echo "APP_ENV=${APP_ENV}" >&2
 php --version >&2
 
+# Wait for database to be reachable (max 30s)
+echo "--- waiting for database ---" >&2
+MAX_TRIES=15
+TRIES=0
+until php /app/artisan tinker --execute="DB::connection()->getPdo();" 2>/dev/null; do
+    TRIES=$((TRIES + 1))
+    if [ $TRIES -ge $MAX_TRIES ]; then
+        echo "WARNING: DB not reachable after ${MAX_TRIES} retries" >&2
+        break
+    fi
+    echo "  DB not ready, retry $TRIES/$MAX_TRIES..." >&2
+    sleep 2
+done
+
 echo "--- migrate ---" >&2
-php /app/artisan migrate --force 2>&1
-if [ $? -ne 0 ]; then
-    echo "MIGRATION FAILED" >&2
-    exit 1
-fi
+php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
 echo "--- config cache ---" >&2
 php /app/artisan config:cache 2>&1

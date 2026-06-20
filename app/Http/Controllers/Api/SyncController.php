@@ -10,6 +10,7 @@ use App\Models\ServiceRemunere;
 use App\Models\Victime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Annotations as OA;
@@ -46,7 +47,9 @@ class SyncController extends ApiController
         DB::beginTransaction();
         try {
             // ── Infractions ──
+            $infractionFields = ['type_infraction_id', 'service_id', 'annee', 'date', 'heure', 'lieu', 'commune_id', 'issue', 'type_drogue', 'unite', 'quantite', 'latitude', 'longitude', 'description', 'local_id', 'montant_amende', 'plaque_vehicule'];
             foreach ($request->input('infractions', []) as $data) {
+                $data = Arr::only($data, array_merge($infractionFields, ['victimes']));
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -62,6 +65,7 @@ class SyncController extends ApiController
                 $data['user_id']     = $user->id;
                 $data['sync_status'] = 'synced';
                 $data['annee']       = date('Y', strtotime($data['date'] ?? now()));
+                unset($data['victimes']);
                 $record = Infraction::updateOrCreate(
                     ['local_id' => $localId],
                     $data
@@ -80,7 +84,9 @@ class SyncController extends ApiController
             }
 
             // ── Accidents ──
+            $accidentFields = ['type', 'date', 'heure', 'lieu', 'commune_id', 'service_id', 'moyen', 'cause_probable', 'latitude', 'longitude', 'description', 'local_id'];
             foreach ($request->input('accidents', []) as $data) {
+                $data = Arr::only($data, array_merge($accidentFields, ['victimes']));
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -95,6 +101,7 @@ class SyncController extends ApiController
                 $localId = $data['local_id'] ?? null;
                 $data['user_id']     = $user->id;
                 $data['sync_status'] = 'synced';
+                unset($data['victimes']);
                 $record = Accident::updateOrCreate(
                     ['local_id' => $localId],
                     $data
@@ -113,7 +120,9 @@ class SyncController extends ApiController
             }
 
             // ── Amendes ──
+            $amendeFields = ['date', 'lieu', 'commune_id', 'service_id', 'montant', 'description', 'plaque_immatriculation', 'local_id'];
             foreach ($request->input('amendes', []) as $data) {
+                $data = Arr::only($data, $amendeFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -135,7 +144,9 @@ class SyncController extends ApiController
             }
 
             // ── Immigrations ──
+            $immigrationFields = ['date', 'lieu', 'commune_id', 'service_id', 'nombre_personnes', 'nombre_hommes', 'nombre_femmes', 'nombre_mineurs', 'observations', 'latitude', 'longitude', 'local_id'];
             foreach ($request->input('immigrations', []) as $data) {
+                $data = Arr::only($data, $immigrationFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -157,7 +168,9 @@ class SyncController extends ApiController
             }
 
             // ── Services rémunérés ──
+            $serviceRemFields = ['date', 'libelle', 'montant', 'service_id', 'commune_id', 'description', 'local_id'];
             foreach ($request->input('services_remuneres', []) as $data) {
+                $data = Arr::only($data, $serviceRemFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,

@@ -190,7 +190,7 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     Route::get('roles', [UserController::class, 'roles'])->middleware('permission:users.view');
 
     // --- Dashboard et statistiques ---
-    Route::prefix('dashboard')->group(function () {
+    Route::prefix('dashboard')->middleware('permission:dashboard.view')->group(function () {
         Route::get('/stats', [DashboardController::class, 'stats']);
         Route::get('/infractions-par-region', [DashboardController::class, 'infractionsParRegion']);
         Route::get('/accidents-par-type', [DashboardController::class, 'accidentsParType']);
@@ -201,7 +201,7 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     });
 
     // --- Export ---
-    Route::prefix('export')->group(function () {
+    Route::prefix('export')->middleware('throttle:10,1')->group(function () {
         Route::get('/infractions/pdf', [ExportController::class, 'infrationsPdf'])->middleware('permission:export.pdf');
         Route::get('/infractions/csv', [ExportController::class, 'infractionsCsv'])->middleware('permission:export.csv');
         Route::get('/accidents/pdf',   [ExportController::class, 'accidentsPdf'])->middleware('permission:export.pdf');
@@ -211,16 +211,16 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
 
     // --- Export avancé (PDF/Word = export.pdf ; Excel = export.csv) ---
     // La vérification fine du format est faite dans AdvancedExportController::checkExportPermission()
-    Route::post('/accidents/export',    [AdvancedExportController::class, 'accidents'])->middleware('permission:export.pdf|export.csv');
-    Route::post('/infractions/export',  [AdvancedExportController::class, 'infractions'])->middleware('permission:export.pdf|export.csv');
-    Route::post('/immigrations/export', [AdvancedExportController::class, 'immigrations'])->middleware('permission:export.pdf|export.csv');
+    Route::post('/accidents/export',    [AdvancedExportController::class, 'accidents'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
+    Route::post('/infractions/export',  [AdvancedExportController::class, 'infractions'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
+    Route::post('/immigrations/export', [AdvancedExportController::class, 'immigrations'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
 
     // --- Rapport complet consolidé (un seul fichier avec toutes les données) ---
-    Route::post('/export/full-report', [FullReportController::class, 'generate'])->middleware('permission:export.pdf|export.csv');
+    Route::post('/export/full-report', [FullReportController::class, 'generate'])->middleware(['throttle:5,1', 'permission:export.pdf|export.csv']);
 
     // --- Synchronisation offline ---
     Route::prefix('sync')->group(function () {
-        Route::post('/batch', [SyncController::class, 'batch']);
+        Route::post('/batch', [SyncController::class, 'batch'])->middleware('throttle:5,1');
         Route::get('/status', [SyncController::class, 'status']);
     });
 

@@ -25,7 +25,7 @@ class CommuneController extends ApiController
 
         $communes = $query->withCount('services')
             ->orderBy('nom')
-            ->paginate($request->get('per_page', 15));
+            ->paginate(min((int) $request->get('per_page', 15), 100));
 
         return $this->paginatedResponse($communes);
     }

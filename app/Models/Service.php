@@ -68,7 +68,8 @@ class Service extends Model
 
     public function scopeSearch($query, $search)
     {
-        return $query->where('nom', 'ILIKE', "%{$search}%");
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+        return $query->where('nom', 'ILIKE', "%{$escaped}%");
     }
 
     public function scopeByType($query, $type)

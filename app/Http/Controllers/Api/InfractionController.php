@@ -65,7 +65,7 @@ class InfractionController extends ApiController
 
         $infractions = $query->withCount('victimes')
             ->orderByDesc('date')
-            ->paginate($request->get('per_page', 15));
+            ->paginate(min((int) $request->get('per_page', 15), 100));
 
         return $this->paginatedResponse($infractions);
     }
@@ -163,7 +163,12 @@ class InfractionController extends ApiController
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $data = $request->all();
+        $data = $request->only([
+            'type_infraction_id', 'service_id', 'annee', 'date', 'heure',
+            'lieu', 'commune_id', 'issue', 'type_drogue', 'unite',
+            'quantite', 'latitude', 'longitude', 'description',
+            'sync_status', 'montant_amende', 'plaque_vehicule',
+        ]);
         $data['user_id'] = auth()->id();
 
         $infraction = Infraction::create($data);
@@ -216,18 +221,26 @@ class InfractionController extends ApiController
             'type_drogue' => 'nullable|string|max:255',
             'unite' => 'nullable|string|max:50',
             'quantite' => 'nullable|numeric|min:0',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:12,17',
+            'longitude' => 'nullable|numeric|between:-18,-11',
             'description' => 'nullable|string',
             'montant_amende' => 'nullable|numeric|min:0',
             'plaque_vehicule' => 'nullable|string|max:20',
+        ], [
+            'latitude.between' => 'La latitude doit être comprise entre 12 et 17 (territoire sénégalais).',
+            'longitude.between' => 'La longitude doit être comprise entre -18 et -11 (territoire sénégalais).',
         ]);
 
         if ($validator->fails()) {
             return $this->errorResponse('Erreur de validation', 422, $validator->errors());
         }
 
-        $infraction->update($request->all());
+        $infraction->update($request->only([
+            'type_infraction_id', 'service_id', 'annee', 'date', 'heure',
+            'lieu', 'commune_id', 'issue', 'type_drogue', 'unite',
+            'quantite', 'latitude', 'longitude', 'description',
+            'montant_amende', 'plaque_vehicule',
+        ]));
 
         return $this->successResponse(
             $infraction->load(['typeInfraction', 'service', 'commune']),

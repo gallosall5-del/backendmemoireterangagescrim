@@ -357,30 +357,7 @@ class AuthController extends ApiController
     }
 
     // ──────────────────────────────────────────────────────────────
-    // HELPERS GÉNÉRATION MOT DE PASSE
-    // ──────────────────────────────────────────────────────────────
-
-    private function generateSecurePassword(int $length = 16): string
-    {
-        $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        $lowercase = 'abcdefghjkmnpqrstuvwxyz';
-        $digits    = '23456789';
-        $special   = '@#$%&*!?';
-        $all       = $uppercase . $lowercase . $digits . $special;
-
-        $password  = $uppercase[random_int(0, strlen($uppercase) - 1)];
-        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
-        $password .= $digits[random_int(0, strlen($digits) - 1)];
-        $password .= $special[random_int(0, strlen($special) - 1)];
-
-        for ($i = 4; $i < $length; $i++) {
-            $password .= $all[random_int(0, strlen($all) - 1)];
-        }
-
-        $chars = str_split($password);
-        shuffle($chars);
-        return implode('', $chars);
-    }
+    use \App\Traits\GeneratesSecurePassword;
 
     // ──────────────────────────────────────────────────────────────
     // MOT DE PASSE OUBLIÉ — Étape 1 : demande de réinitialisation
@@ -901,25 +878,30 @@ class AuthController extends ApiController
 
         $user->load('service');
 
-        $response = $this->successResponse([
-            'access_token' => $token,
-            'token_type'   => 'bearer',
-            'expires_in'   => $ttlSec,
-            'device_id'    => $deviceId,
-            'user' => [
-                'id'               => $user->id,
-                'name'             => $user->name,
-                'email'            => $user->email,
-                'service_id'       => $user->service_id,
-                'service'          => $user->service,
-                'read_scope_type'  => $user->read_scope_type?->value,
-                'read_scope_id'    => $user->read_scope_id,
-                'write_scope_type' => $user->write_scope_type?->value,
-                'write_scope_id'   => $user->write_scope_id,
-                'is_2fa_enabled'   => $user->is_2fa_enabled,
-                'roles'            => $user->getRoleNames(),
-            ],
-        ], 'Connexion réussie.');
+        $isMobile = request()->header('X-Mobile-Client') === 'flutter';
+
+        $responseData = [];
+        if ($isMobile) {
+            $responseData['access_token'] = $token;
+            $responseData['token_type']   = 'bearer';
+        }
+        $responseData['expires_in'] = $ttlSec;
+        $responseData['device_id']  = $deviceId;
+        $responseData['user'] = [
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'service_id'       => $user->service_id,
+            'service'          => $user->service,
+            'read_scope_type'  => $user->read_scope_type?->value,
+            'read_scope_id'    => $user->read_scope_id,
+            'write_scope_type' => $user->write_scope_type?->value,
+            'write_scope_id'   => $user->write_scope_id,
+            'is_2fa_enabled'   => $user->is_2fa_enabled,
+            'roles'            => $user->getRoleNames(),
+        ];
+
+        $response = $this->successResponse($responseData, 'Connexion réussie.');
 
         $response->cookie(
             'jwt_token',

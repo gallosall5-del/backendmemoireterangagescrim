@@ -34,7 +34,7 @@ class RegionController extends ApiController
 
         $regions = $query->withCount('departements')
             ->orderBy('nom')
-            ->paginate($request->get('per_page', 15));
+            ->paginate(min((int) $request->get('per_page', 15), 100));
 
         return $this->paginatedResponse($regions);
     }

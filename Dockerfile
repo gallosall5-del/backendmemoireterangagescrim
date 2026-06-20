@@ -11,12 +11,13 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY . .
 
-RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views \
-    && chmod -R 777 storage bootstrap/cache
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 COPY Caddyfile /etc/caddy/Caddyfile
 

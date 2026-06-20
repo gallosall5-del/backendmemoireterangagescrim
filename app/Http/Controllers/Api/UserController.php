@@ -15,6 +15,7 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends ApiController
 {
+    use \App\Traits\GeneratesSecurePassword;
     // Hiérarchie : les rôles qu'un rôle donné peut attribuer
     private const ASSIGNABLE_ROLES = [
         'super_admin'  => ['super_admin', 'admin', 'gestionnaire', 'superviseur', 'agent'],
@@ -24,34 +25,6 @@ class UserController extends ApiController
         'agent'        => [],
     ];
 
-    /**
-     * Génère un mot de passe sécurisé via CSPRNG (random_bytes).
-     * Composition garantie : majuscule, minuscule, chiffre, caractère spécial.
-     */
-    private function generateSecurePassword(int $length = 16): string
-    {
-        $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        $lowercase = 'abcdefghjkmnpqrstuvwxyz';
-        $digits    = '23456789';
-        $special   = '@#$%&*!?';
-        $all       = $uppercase . $lowercase . $digits . $special;
-
-        // Garantir au moins un caractère de chaque classe
-        $password  = $uppercase[random_int(0, strlen($uppercase) - 1)];
-        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
-        $password .= $digits[random_int(0, strlen($digits) - 1)];
-        $password .= $special[random_int(0, strlen($special) - 1)];
-
-        for ($i = 4; $i < $length; $i++) {
-            $password .= $all[random_int(0, strlen($all) - 1)];
-        }
-
-        // Mélanger pour éviter que les classes soient prévisibles en position
-        $chars = str_split($password);
-        shuffle($chars);
-
-        return implode('', $chars);
-    }
 
     private function canAssignRole(string $targetRole): bool
     {
@@ -110,7 +83,7 @@ class UserController extends ApiController
         if ($request->has('service_id')) $query->byService($request->service_id);
         if ($request->has('is_active')) $query->where('is_active', $request->boolean('is_active'));
 
-        return $this->paginatedResponse($query->orderBy('name')->paginate($request->get('per_page', 15)));
+        return $this->paginatedResponse($query->orderBy('name')->paginate(min((int) $request->get('per_page', 15), 100)));
     }
 
     public function show(User $user): JsonResponse

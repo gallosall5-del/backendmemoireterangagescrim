@@ -32,7 +32,7 @@ class NotificationController extends ApiController
         }
 
         $paginated = $query->orderByDesc('created_at')
-            ->paginate($request->get('per_page', 15));
+            ->paginate(min((int) $request->get('per_page', 15), 100));
 
         $paginated->getCollection()->transform(fn($n) => $this->formatNotification($n));
 
