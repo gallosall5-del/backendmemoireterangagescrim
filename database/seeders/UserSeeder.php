@@ -62,7 +62,7 @@ class UserSeeder extends Seeder
             'is_active'        => true,
             'read_scope_type'  => 'region',
             'read_scope_id'    => 1,
-            'write_scope_type' => null,
+            'write_scope_type' => 'national',
             'write_scope_id'   => null,
         ]);
         $superviseur->syncRoles(['superviseur']);
