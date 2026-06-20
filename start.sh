@@ -23,12 +23,18 @@ echo "--- migrate ---" >&2
 php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
 echo "--- seed (if needed) ---" >&2
-USER_COUNT=$(php /app/artisan tinker --execute="echo App\Models\User::count();" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+USER_COUNT=$(php /app/artisan tinker --execute="echo \App\Models\User::count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
 echo "  User count: '${USER_COUNT}'" >&2
 if [ -z "$USER_COUNT" ] || [ "$USER_COUNT" = "0" ]; then
-    echo "  No users found, running full seed..." >&2
-    php /app/artisan db:seed --force 2>&1
-    echo "  Seed exit code: $?" >&2
+    echo "  No users found — seeding step by step..." >&2
+    php /app/artisan db:seed --class=SubdivisionSeeder --force 2>&1 || echo "WARN: SubdivisionSeeder failed" >&2
+    php /app/artisan db:seed --class=ServiceSeeder --force 2>&1 || echo "WARN: ServiceSeeder failed" >&2
+    php /app/artisan db:seed --class=RolePermissionSeeder --force 2>&1 || echo "WARN: RolePermissionSeeder failed" >&2
+    php /app/artisan db:seed --class=UserSeeder --force 2>&1 || echo "WARN: UserSeeder failed" >&2
+    php /app/artisan db:seed --class=TestUsersSeeder --force 2>&1 || echo "WARN: TestUsersSeeder failed" >&2
+    php /app/artisan db:seed --class=InfractionTypeSeeder --force 2>&1 || echo "WARN: InfractionTypeSeeder failed" >&2
+    php /app/artisan db:seed --class=DataSeeder --force 2>&1 || echo "WARN: DataSeeder failed" >&2
+    echo "  Seeding done." >&2
 else
     echo "  $USER_COUNT users already exist, skipping seed." >&2
 fi
