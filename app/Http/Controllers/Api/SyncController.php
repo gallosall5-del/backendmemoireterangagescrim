@@ -144,7 +144,7 @@ class SyncController extends ApiController
             }
 
             // ── Immigrations ──
-            $immigrationFields = ['date', 'lieu', 'commune_id', 'service_id', 'nombre_personnes', 'nombre_hommes', 'nombre_femmes', 'nombre_mineurs', 'observations', 'latitude', 'longitude', 'local_id'];
+            $immigrationFields = ['date', 'heure', 'commune_id', 'service_id', 'nombre_interpellation', 'nombre_hommes', 'nombre_femmes', 'nombre_enfants', 'nombre_maries', 'nombre_celibataires', 'nombre_senegalais', 'nombre_etrangers', 'observations', 'latitude', 'longitude', 'local_id'];
             foreach ($request->input('immigrations', []) as $data) {
                 $data = Arr::only($data, $immigrationFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
