@@ -37,6 +37,15 @@ use App\Http\Controllers\Api\FullReportController;
 // ========== Health check Railway ==========
 Route::get('health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]));
 
+Route::get('debug-error', function () {
+    try {
+        $user = \App\Models\User::first();
+        return response()->json(['ok' => true, 'user' => $user?->email]);
+    } catch (\Throwable $e) {
+        return response()->json(['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], 500);
+    }
+});
+
 
 // ========== Authentification ==========
 Route::prefix('auth')->group(function () {
