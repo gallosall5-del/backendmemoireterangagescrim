@@ -22,6 +22,8 @@ use OpenApi\Attributes as OA;
 
 class AuthController extends ApiController
 {
+    use \App\Traits\GeneratesSecurePassword;
+
     private int $pwdResetExpiry = 10; // minutes
 
     public function __construct(
@@ -338,9 +340,6 @@ class AuthController extends ApiController
             'personnel'        => $user->personnel,
         ]);
     }
-
-    // ──────────────────────────────────────────────────────────────
-    use \App\Traits\GeneratesSecurePassword;
 
     // ──────────────────────────────────────────────────────────────
     // MOT DE PASSE OUBLIÉ — Étape 1 : demande de réinitialisation
