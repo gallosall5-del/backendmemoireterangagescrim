@@ -37,12 +37,12 @@ use App\Http\Controllers\Api\FullReportController;
 // ========== Health check Railway ==========
 Route::get('health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]));
 
-Route::get('debug-error', function () {
+Route::post('debug-login', function (\Illuminate\Http\Request $request) {
     try {
         $ctrl = app(\App\Http\Controllers\Api\Auth\AuthController::class);
-        return response()->json(['ok' => true, 'ctrl' => get_class($ctrl)]);
+        return $ctrl->login($request);
     } catch (\Throwable $e) {
-        return response()->json(['error' => $e->getMessage(), 'file' => basename($e->getFile()), 'line' => $e->getLine()], 500);
+        return response()->json(['error' => $e->getMessage(), 'file' => basename($e->getFile()), 'line' => $e->getLine(), 'trace' => array_slice(array_map(fn($f) => ($f['file'] ?? '').'#'.($f['line'] ?? ''), $e->getTrace()), 0, 5)], 500);
     }
 });
 
