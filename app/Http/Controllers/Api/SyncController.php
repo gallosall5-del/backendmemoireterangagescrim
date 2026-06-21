@@ -50,6 +50,8 @@ class SyncController extends ApiController
             $infractionFields = ['type_infraction_id', 'service_id', 'annee', 'date', 'heure', 'lieu', 'commune_id', 'issue', 'type_drogue', 'unite', 'quantite', 'latitude', 'longitude', 'description', 'local_id', 'montant_amende', 'plaque_vehicule'];
             foreach ($request->input('infractions', []) as $data) {
                 $data = Arr::only($data, array_merge($infractionFields, ['victimes']));
+                if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
+                if (empty($data['service_id'])) { $results['errors'][] = 'Infraction ignorée : service_id manquant'; continue; }
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -87,6 +89,8 @@ class SyncController extends ApiController
             $accidentFields = ['type', 'date', 'heure', 'lieu', 'commune_id', 'service_id', 'moyen', 'cause_probable', 'latitude', 'longitude', 'description', 'local_id'];
             foreach ($request->input('accidents', []) as $data) {
                 $data = Arr::only($data, array_merge($accidentFields, ['victimes']));
+                if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
+                if (empty($data['service_id'])) { $results['errors'][] = 'Accident ignoré : service_id manquant'; continue; }
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
                     \App\Models\AuditLog::create([
                         'user_id'    => $user->id,
@@ -144,18 +148,14 @@ class SyncController extends ApiController
             }
 
             // ── Immigrations ──
-            $immigrationFields = ['date', 'heure', 'commune_id', 'service_id', 'nombre_interpellation', 'nombre_hommes', 'nombre_femmes', 'nombre_enfants', 'nombre_maries', 'nombre_celibataires', 'nombre_senegalais', 'nombre_etrangers', 'observations', 'latitude', 'longitude', 'local_id'];
+            $immigrationFields = ['date', 'heure', 'service_id', 'nombre_interpellation', 'nombre_hommes', 'nombre_femmes', 'nombre_enfants', 'nombre_maries', 'nombre_celibataires', 'nombre_senegalais', 'nombre_etrangers', 'zone_depart', 'zone_depart_lat', 'zone_depart_lng', 'zone_arrivee_prevue', 'zone_arrivee_lat', 'zone_arrivee_lng', 'local_id'];
             foreach ($request->input('immigrations', []) as $data) {
                 $data = Arr::only($data, $immigrationFields);
-                if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
-                    \App\Models\AuditLog::create([
-                        'user_id'    => $user->id,
-                        'action'     => 'sync_violation',
-                        'model_type' => ImmigrationClandestine::class,
-                        'new_values' => ['commune_id' => $data['commune_id']],
-                        'ip_address' => $request->ip(),
-                    ]);
-                    $results['errors'][] = 'Accès territorial refusé (immigration commune ' . $data['commune_id'] . ')';
+                if (empty($data['service_id'])) {
+                    $data['service_id'] = $user->service_id;
+                }
+                if (empty($data['service_id'])) {
+                    $results['errors'][] = 'Immigration ignorée : service_id manquant';
                     continue;
                 }
                 $localId = $data['local_id'] ?? null;
