@@ -859,13 +859,12 @@ class AuthController extends ApiController
 
         $isMobile = request()->header('X-Mobile-Client') === 'flutter';
 
-        $responseData = [];
-        if ($isMobile) {
-            $responseData['access_token'] = $token;
-            $responseData['token_type']   = 'bearer';
-        }
-        $responseData['expires_in'] = $ttlSec;
-        $responseData['device_id']  = $deviceId;
+        $responseData = [
+            'access_token' => $token,
+            'token_type'   => 'bearer',
+            'expires_in'   => $ttlSec,
+            'device_id'    => $deviceId,
+        ];
         $responseData['user'] = [
             'id'               => $user->id,
             'name'             => $user->name,
@@ -882,29 +881,34 @@ class AuthController extends ApiController
 
         $response = $this->successResponse($responseData, 'Connexion réussie.');
 
+        $isProduction = config('app.env') === 'production';
+        // SameSite=None requis pour les requêtes cross-origin (Vercel → Render)
+        // SameSite=None exige Secure=true en production
+        $sameSite = $isProduction ? 'None' : 'Lax';
+
         $response->cookie(
             'jwt_token',
             $token,
             config('jwt.ttl'),
             '/',
             null,
-            config('app.env') === 'production',
-            true,   // HttpOnly
+            $isProduction,  // Secure
+            true,           // HttpOnly
             false,
-            'Lax'
+            $sameSite
         );
 
         if ($deviceId) {
             $response->cookie(
                 'device_id',
                 $deviceId,
-                60 * 24 * 365, // 1 an
+                60 * 24 * 365,
                 '/',
                 null,
-                config('app.env') === 'production',
-                false, // lisible par JS (pas sensible)
+                $isProduction,  // Secure
+                false,          // lisible par JS
                 false,
-                'Lax'
+                $sameSite
             );
         }
 
