@@ -34,6 +34,9 @@ return [
         '#^https://.*\.up\.railway\.app$#',
         '#^https://.*\.vercel\.app$#',
         '#^https://.*\.onrender\.com$#',
+        // Flutter web dev (port dynamique assigné par flutter run -d chrome)
+        '#^http://localhost(:[0-9]+)?$#',
+        '#^http://127\.0\.0\.1(:[0-9]+)?$#',
     ],
 
     'allowed_headers' => ['*'],
