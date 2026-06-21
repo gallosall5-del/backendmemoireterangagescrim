@@ -31,14 +31,10 @@ class TwoFactorService
             now()->addMinutes($this->expiresInMinutes)
         );
 
-        // Copie en clair pour debug (supprimée quand SMTP fonctionne)
-        Cache::put("otp_plain:{$user->id}", $code, now()->addMinutes($this->expiresInMinutes));
-
         // Cooldown 60 secondes entre deux envois
         Cache::put($cooldownKey, true, now()->addSeconds(60));
 
-        // Redirection temporaire : tous les OTP vers une boîte de test unique
-        Mail::to('gallosall5@gmail.com')->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
+        Mail::to($user->email)->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
 
         return true;
     }
