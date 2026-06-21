@@ -4,51 +4,169 @@
     <meta charset="UTF-8">
     <title>{{ $titre }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #1a202c; margin: 0; padding: 0; }
-        .header { text-align: center; padding-bottom: 10px; border-bottom: 2px solid #742a2a; margin-bottom: 12px; }
-        .header h1 { color: #742a2a; font-size: 15px; margin: 0 0 3px; }
-        .header h2 { color: #2d3748; font-size: 12px; margin: 0 0 3px; }
-        .header p { color: #718096; font-size: 8px; margin: 2px 0; }
-        .meta { font-size: 8px; color: #4a5568; margin-bottom: 10px; display: flex; gap: 16px; flex-wrap: wrap; }
-        .meta strong { color: #2d3748; }
-        .badge { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; padding: 1px 5px; border-radius: 3px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-        th { background-color: #742a2a; color: white; padding: 5px 4px; text-align: left; font-size: 8px; }
-        td { padding: 4px; border-bottom: 1px solid #e2e8f0; font-size: 8px; vertical-align: top; }
-        tr:nth-child(even) td { background-color: #fff5f5; }
-        .footer { text-align: center; margin-top: 18px; font-size: 7.5px; color: #a0aec0; border-top: 1px solid #e2e8f0; padding-top: 6px; }
-        .total-row td { font-weight: bold; background-color: #fed7d7 !important; font-size: 9px; }
-        .empty { text-align: center; color: #a0aec0; padding: 24px; font-style: italic; }
-        .page-number:after { content: counter(page); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #1a202c; }
+
+        /* ── En-tête institutionnel ── */
+        .page-header { border-bottom: 3px solid #1B4332; margin-bottom: 10px; padding-bottom: 8px; }
+        .page-header table { width: 100%; border-collapse: collapse; }
+        .page-header .logo-cell { width: 70px; text-align: center; vertical-align: middle; }
+        .page-header .logo-emblem {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: #1B4332; color: #fff;
+            text-align: center; line-height: 52px;
+            font-size: 22px; font-weight: bold; display: inline-block;
+        }
+        .page-header .title-cell { vertical-align: middle; padding-left: 10px; }
+        .page-header .inst { font-size: 8px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; }
+        .page-header h1 { font-size: 14px; font-weight: bold; color: #1B4332; margin: 3px 0 2px; }
+        .page-header h2 { font-size: 11px; color: #2d3748; }
+        .page-header .meta-right { text-align: right; vertical-align: top; font-size: 8px; color: #718096; }
+
+        /* ── Bandeau méta ── */
+        .meta-band {
+            background: #ECFDF5; border: 1px solid #A7F3D0;
+            padding: 5px 8px; margin-bottom: 10px;
+            font-size: 8px; color: #065F46;
+        }
+        .meta-band table { width: 100%; border-collapse: collapse; }
+        .meta-band td { padding: 0 8px 0 0; }
+        .meta-band strong { color: #1B4332; }
+        .badge { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; padding: 1px 6px; border-radius: 3px; font-weight: bold; }
+
+        /* ── Cartes synthèse ── */
+        .summary { width: 100%; margin-bottom: 10px; border-collapse: collapse; }
+        .summary td { text-align: center; padding: 6px 4px; border: 1px solid #A7F3D0; }
+        .summary .num { font-size: 16px; font-weight: bold; color: #1B4332; display: block; }
+        .summary .lbl { font-size: 7px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.3px; }
+        .s-blue   { background: #EBF8FF; border-color: #90CDF4 !important; }
+        .s-orange { background: #FFFAF0; border-color: #FBD38D !important; }
+        .s-red    { background: #FFF5F5; border-color: #FEB2B2 !important; }
+        .s-green  { background: #F0FFF4; border-color: #9AE6B4 !important; }
+        .s-num-blue   { color: #2B6CB0 !important; }
+        .s-num-orange { color: #C05621 !important; }
+        .s-num-red    { color: #C53030 !important; }
+
+        /* ── Tableau de données ── */
+        .section-title {
+            background: #1B4332; color: #fff;
+            padding: 4px 8px; font-size: 10px; font-weight: bold;
+            margin: 10px 0 4px; letter-spacing: 0.3px;
+        }
+        table.data { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        table.data thead th {
+            background: #2D6A4F; color: #fff;
+            padding: 5px 4px; text-align: left; font-size: 8px;
+            border: 1px solid #1B4332;
+        }
+        table.data tbody td {
+            padding: 4px; border: 1px solid #D1FAE5;
+            font-size: 8px; vertical-align: top;
+        }
+        table.data tbody tr:nth-child(even) td { background: #F0FFF4; }
+        /* Ligne total — jaune comme ANASER */
+        table.data tfoot td {
+            background: #FFFF00; color: #1B4332;
+            font-weight: bold; font-size: 9px;
+            padding: 5px 4px; border: 1px solid #D9D9D9;
+        }
+
+        /* ── Pied de page ── */
+        .footer {
+            margin-top: 14px; border-top: 1px solid #D1FAE5;
+            padding-top: 5px; text-align: center;
+            font-size: 7.5px; color: #a0aec0;
+        }
+        .empty { text-align: center; color: #a0aec0; padding: 20px; font-style: italic; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>TERANGA GESCRIM</h1>
-        <p>Direction de la Sécurité Publique — Sénégal</p>
-        <h2>{{ $titre }}</h2>
-        <p>Généré le : {{ $date_generation }} — Agent : {{ $agent }}</p>
+
+    {{-- En-tête institutionnel --}}
+    <div class="page-header">
+        <table>
+            <tr>
+                <td class="logo-cell">
+                    <div class="logo-emblem">DSP</div>
+                </td>
+                <td class="title-cell">
+                    <div class="inst">République du Sénégal — Ministère de l'Intérieur</div>
+                    <h1>TERANGA GESCRIM</h1>
+                    <h2>{{ $titre }}</h2>
+                </td>
+                <td class="meta-right">
+                    Généré le : {{ $date_generation }}<br>
+                    Agent : <strong>{{ $agent }}</strong>
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <div class="meta">
-        <span><strong>Période :</strong> <span class="badge">{{ $period_label }}</span></span>
-        <span><strong>Total :</strong> {{ $records->count() }} accident(s)</span>
+    {{-- Bandeau méta --}}
+    <div class="meta-band">
+        <table>
+            <tr>
+                <td><strong>Période :</strong> <span class="badge">{{ $period_label }}</span></td>
+                <td><strong>Total accidents :</strong> {{ $records->count() }}</td>
+                <td><strong>Total victimes :</strong> {{ $records->sum(fn($a) => $a->victimes->count()) }}</td>
+                <td><strong>Tués :</strong> {{ $records->sum(fn($a) => $a->victimes->where('etat_medical', 'décédé')->count()) }}</td>
+            </tr>
+        </table>
     </div>
+
+    {{-- Cartes de synthèse par type --}}
+    @php
+        $corporels = $records->where('type', 'corporel')->count();
+        $materiels = $records->where('type', 'matériel')->count();
+        $mortels   = $records->where('type', 'mortel')->count();
+        $autres    = $records->whereNotIn('type', ['corporel','matériel','mortel'])->count();
+    @endphp
+    <table class="summary">
+        <tr>
+            <td class="s-blue">
+                <span class="num s-num-blue">{{ $corporels }}</span>
+                <span class="lbl">Accidents corporels</span>
+            </td>
+            <td class="s-orange">
+                <span class="num s-num-orange">{{ $materiels }}</span>
+                <span class="lbl">Accidents matériels</span>
+            </td>
+            <td class="s-red">
+                <span class="num s-num-red">{{ $mortels }}</span>
+                <span class="lbl">Accidents mortels</span>
+            </td>
+            <td class="s-green">
+                <span class="num">{{ $autres }}</span>
+                <span class="lbl">Autres / Non classés</span>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Tableau détaillé --}}
+    <div class="section-title">DÉTAIL DES ACCIDENTS ({{ $records->count() }})</div>
 
     @if($records->isEmpty())
         <p class="empty">Aucun accident trouvé pour les critères sélectionnés.</p>
     @else
-    <table>
+    <table class="data">
         <thead>
             <tr>
-                <th>#</th><th>Date</th><th>Heure</th><th>Type</th><th>Lieu</th>
-                <th>Commune</th><th>Service</th><th>Moyen</th><th>Cause</th><th>Victimes</th>
+                <th width="3%">#</th>
+                <th width="8%">Date</th>
+                <th width="6%">Heure</th>
+                <th width="8%">Type</th>
+                <th width="14%">Lieu</th>
+                <th width="10%">Commune</th>
+                <th width="13%">Service</th>
+                <th width="10%">Moyen</th>
+                <th width="15%">Cause probable</th>
+                <th width="13%">Victimes</th>
             </tr>
         </thead>
         <tbody>
             @foreach($records as $index => $a)
             <tr>
-                <td>{{ $index + 1 }}</td>
+                <td style="text-align:center">{{ $index + 1 }}</td>
                 <td>{{ $a->date?->format('d/m/Y') ?? '-' }}</td>
                 <td>{{ $a->heure ?? '-' }}</td>
                 <td>{{ $a->type ?? '-' }}</td>
@@ -57,20 +175,22 @@
                 <td>{{ $a->service->nom ?? '-' }}</td>
                 <td>{{ $a->moyen ?? '-' }}</td>
                 <td>{{ $a->cause_probable ?? '-' }}</td>
-                <td>{{ $a->victimes->count() }}</td>
+                <td style="text-align:center">{{ $a->victimes->count() }}</td>
             </tr>
             @endforeach
-            <tr class="total-row">
-                <td colspan="9">Total</td>
-                <td>{{ $records->sum(fn($a) => $a->victimes->count()) }}</td>
-            </tr>
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="9" style="text-align:right">TOTAUX</td>
+                <td style="text-align:center">{{ $records->sum(fn($a) => $a->victimes->count()) }}</td>
+            </tr>
+        </tfoot>
     </table>
     @endif
 
     <div class="footer">
-        <p>Teranga GESCRIM — Rapport confidentiel — {{ $date_generation }}</p>
-        <p>Direction de la Sécurité Publique — Accès réservé au personnel autorisé</p>
+        <p>Teranga GESCRIM — Rapport confidentiel — Direction de la Sécurité Publique — Sénégal</p>
+        <p>Généré le {{ $date_generation }} — Accès réservé au personnel autorisé</p>
     </div>
 </body>
 </html>

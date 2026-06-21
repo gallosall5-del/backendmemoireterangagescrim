@@ -56,6 +56,9 @@ class AdvancedExportController extends ApiController
             ], 'accidents'),
 
             'excel' => $this->excelService->download(
+                'Rapport des Accidents de Circulation',
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu',
                 ['#', 'Date', 'Heure', 'Type', 'Lieu', 'Commune', 'Service', 'Moyen', 'Cause', 'Victimes'],
                 $accidents->map(fn($a, $i) => [
                     $i + 1,
@@ -69,6 +72,7 @@ class AdvancedExportController extends ApiController
                     $a->cause_probable ?? '-',
                     $a->victimes->count(),
                 ])->values()->all(),
+                ['TOTAUX', '', '', '', '', '', '', '', '', $accidents->sum(fn($a) => $a->victimes->count())],
                 'accidents'
             ),
 
@@ -128,6 +132,9 @@ class AdvancedExportController extends ApiController
             ], 'infractions'),
 
             'excel' => $this->excelService->download(
+                'Rapport des Infractions',
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu',
                 ['#', 'Date', 'Heure', 'Lieu', 'Commune', 'Service', 'Type', 'Catégorie', 'Issue', 'Description'],
                 $infractions->map(fn($inf, $i) => [
                     $i + 1,
@@ -141,6 +148,7 @@ class AdvancedExportController extends ApiController
                     $inf->issue ?? '-',
                     $inf->description ?? '-',
                 ])->values()->all(),
+                ['TOTAUX', '', '', '', '', '', '', '', '', $infractions->count()],
                 'infractions'
             ),
 
@@ -199,12 +207,15 @@ class AdvancedExportController extends ApiController
             ], 'immigrations'),
 
             'excel' => $this->excelService->download(
+                'Rapport des Immigrations Clandestines',
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu',
                 ['#', 'Date', 'Service', 'Total', 'Hommes', 'Femmes', 'Enfants', 'Sénégalais', 'Étrangers', 'Zone départ', 'Zone arrivée'],
                 $records->map(fn($r, $i) => [
                     $i + 1,
                     $r->date?->format('d/m/Y') ?? '-',
                     $r->service->nom ?? '-',
-                    $r->nombre_interpellation ?? '-',
+                    $r->nombre_interpellation ?? 0,
                     $r->nombre_hommes ?? 0,
                     $r->nombre_femmes ?? 0,
                     $r->nombre_enfants ?? 0,
@@ -213,6 +224,7 @@ class AdvancedExportController extends ApiController
                     $r->zone_depart ?? '-',
                     $r->zone_arrivee_prevue ?? '-',
                 ])->values()->all(),
+                ['TOTAUX', '', '', $records->sum('nombre_interpellation'), $records->sum('nombre_hommes'), $records->sum('nombre_femmes'), $records->sum('nombre_enfants'), $records->sum('nombre_senegalais'), $records->sum('nombre_etrangers'), '', ''],
                 'immigrations'
             ),
 
