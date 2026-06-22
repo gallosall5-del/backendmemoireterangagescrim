@@ -69,9 +69,15 @@ class UserController extends ApiController
             'gestionnaire' => $query->where('service_id', $me->service_id)
                                     ->whereHas('roles', fn($q) => $q->where('name', 'agent')),
             'superviseur'  => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
-                                    ->whereHas('service', function($sq) use ($me) {
-                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                    }),
+                                    ->where(fn($q) => $q
+                                        ->whereHas('service', function($sq) use ($me) {
+                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                        })
+                                        ->orWhere(fn($q2) => $q2
+                                            ->where('read_scope_type', 'region')
+                                            ->where('read_scope_id', $me->read_scope_id)
+                                        )
+                                    ),
             'admin'        => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin']))
                                     ->where(fn($q) => $q->whereHas('service', function($sq) use ($me) {
                                         $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
