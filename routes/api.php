@@ -182,6 +182,7 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
         Route::put('/read-all',     [NotificationController::class, 'markAllAsRead']);
         Route::put('/{notification}/read', [NotificationController::class, 'markAsRead']);
         Route::post('/send',        [NotificationController::class, 'send'])->middleware('permission:notifications.send');
+        Route::get('/zone-data',    [NotificationController::class, 'zoneData'])->middleware('permission:notifications.send');
     });
 
     // --- Utilisateurs et rôles ---

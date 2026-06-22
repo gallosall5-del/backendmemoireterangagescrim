@@ -111,10 +111,14 @@ class NotificationController extends ApiController
         $me          = auth()->user();
         $currentRole = $me->getRoleNames()->first() ?? '';
 
-        // Le gestionnaire ne peut notifier que son propre service
+        $writeScope   = $me->write_scope_type?->value ?? 'national';
+        $writeScopeId = $me->write_scope_id;
+
+        // Diffusions autorisées par rôle
         $allowedDiffusions = match ($currentRole) {
             'gestionnaire' => ['service', 'user', 'users'],
-            'admin'        => ['region', 'departement', 'commune', 'service', 'user', 'users', 'role'],
+            'admin'        => ['region', 'departement', 'commune', 'service', 'user', 'users'],
+            'superviseur'  => ['region', 'departement', 'commune', 'service', 'user', 'users'],
             default        => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
         };
 
@@ -139,6 +143,14 @@ class NotificationController extends ApiController
 
         if (!in_array($diffusion, $allowedDiffusions, true)) {
             return $this->errorResponse('Vous ne pouvez pas envoyer une notification avec ce mode de diffusion.', 403);
+        }
+
+        // Vérification territoriale : l'expéditeur ne peut cibler que sa zone ou en dessous
+        if ($writeScope !== 'national') {
+            $error = $this->checkTerritorialTarget($diffusion, $targetId, $targetIds, $writeScope, $writeScopeId, $me);
+            if ($error) {
+                return $this->errorResponse($error, 403);
+            }
         }
 
         // Le gestionnaire ne peut notifier que son propre service
@@ -196,6 +208,151 @@ class NotificationController extends ApiController
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * Retourne les IDs de région/département/commune/service accessibles par l'expéditeur selon son scope.
+     * Utilisé par le frontend via GET /notifications/zone-data.
+     */
+    public function zoneData(): JsonResponse
+    {
+        $me          = auth()->user();
+        $writeScope  = $me->write_scope_type?->value ?? 'national';
+        $scopeId     = $me->write_scope_id;
+
+        if ($writeScope === 'national') {
+            return $this->successResponse([
+                'scope'      => 'national',
+                'regions'    => Region::select('id', 'nom')->orderBy('nom')->get(),
+            ]);
+        }
+
+        if ($writeScope === 'region') {
+            $region = Region::with([
+                'departements:id,nom,region_id',
+                'departements.communes:id,nom,departement_id',
+                'departements.communes.services:id,nom,commune_id',
+            ])->find($scopeId, ['id', 'nom']);
+
+            return $this->successResponse([
+                'scope'   => 'region',
+                'region'  => $region,
+            ]);
+        }
+
+        if ($writeScope === 'departement') {
+            $dept = Departement::with([
+                'communes:id,nom,departement_id',
+                'communes.services:id,nom,commune_id',
+            ])->find($scopeId, ['id', 'nom', 'region_id']);
+
+            return $this->successResponse([
+                'scope'       => 'departement',
+                'departement' => $dept,
+            ]);
+        }
+
+        if ($writeScope === 'commune') {
+            $commune = Commune::with('services:id,nom,commune_id')
+                ->find($scopeId, ['id', 'nom', 'departement_id']);
+
+            return $this->successResponse([
+                'scope'   => 'commune',
+                'commune' => $commune,
+            ]);
+        }
+
+        // service
+        $service = Service::find($scopeId, ['id', 'nom', 'commune_id']);
+        return $this->successResponse([
+            'scope'   => 'service',
+            'service' => $service,
+        ]);
+    }
+
+    /**
+     * Vérifie que la cible est dans le périmètre de write_scope de l'expéditeur.
+     * Retourne un message d'erreur ou null si OK.
+     */
+    private function checkTerritorialTarget(
+        string $diffusion, mixed $targetId, array $targetIds,
+        string $writeScope, mixed $writeScopeId, $me
+    ): ?string {
+        switch ($writeScope) {
+            case 'region':
+                return match ($diffusion) {
+                    'region' => ((int)$targetId !== (int)$writeScopeId)
+                        ? 'Vous ne pouvez notifier que votre région.' : null,
+
+                    'departement' => Departement::where('id', $targetId)
+                        ->where('region_id', $writeScopeId)->exists()
+                        ? null : 'Ce département n\'est pas dans votre région.',
+
+                    'commune' => Commune::where('id', $targetId)
+                        ->whereHas('departement', fn($q) => $q->where('region_id', $writeScopeId))->exists()
+                        ? null : 'Cette commune n\'est pas dans votre région.',
+
+                    'service' => Service::where('id', $targetId)
+                        ->whereHas('commune.departement', fn($q) => $q->where('region_id', $writeScopeId))->exists()
+                        ? null : 'Ce service n\'est pas dans votre région.',
+
+                    'user' => User::where('id', $targetId)
+                        ->where(fn($q) => $q
+                            ->where(fn($q2) => $q2->where('read_scope_type', 'region')->where('read_scope_id', $writeScopeId))
+                            ->orWhereHas('service', fn($q2) => $q2
+                                ->whereHas('commune.departement', fn($q3) => $q3->where('region_id', $writeScopeId)))
+                        )->exists()
+                        ? null : 'Cet utilisateur n\'est pas dans votre région.',
+
+                    'users' => (function () use ($targetIds, $writeScopeId) {
+                        $serviceIds = Service::whereHas('commune.departement', fn($q) =>
+                            $q->where('region_id', $writeScopeId))->pluck('id');
+                        $valid = User::whereIn('id', $targetIds)
+                            ->where(fn($q) => $q
+                                ->where(fn($q2) => $q2->where('read_scope_type', 'region')->where('read_scope_id', $writeScopeId))
+                                ->orWhereIn('service_id', $serviceIds)
+                            )->pluck('id')->toArray();
+                        return count(array_diff($targetIds, $valid)) === 0
+                            ? null : 'Certains utilisateurs ne sont pas dans votre région.';
+                    })(),
+
+                    default => 'Mode de diffusion non autorisé pour votre périmètre.',
+                };
+
+            case 'departement':
+                return match ($diffusion) {
+                    'departement' => ((int)$targetId !== (int)$writeScopeId)
+                        ? 'Vous ne pouvez notifier que votre département.' : null,
+
+                    'commune' => Commune::where('id', $targetId)
+                        ->where('departement_id', $writeScopeId)->exists()
+                        ? null : 'Cette commune n\'est pas dans votre département.',
+
+                    'service' => Service::where('id', $targetId)
+                        ->whereHas('commune', fn($q) => $q->where('departement_id', $writeScopeId))->exists()
+                        ? null : 'Ce service n\'est pas dans votre département.',
+
+                    'user', 'users' => null,
+
+                    default => 'Mode de diffusion non autorisé pour votre périmètre.',
+                };
+
+            case 'commune':
+                return match ($diffusion) {
+                    'commune' => ((int)$targetId !== (int)$writeScopeId)
+                        ? 'Vous ne pouvez notifier que votre commune.' : null,
+
+                    'service' => Service::where('id', $targetId)
+                        ->where('commune_id', $writeScopeId)->exists()
+                        ? null : 'Ce service n\'est pas dans votre commune.',
+
+                    'user', 'users' => null,
+
+                    default => 'Mode de diffusion non autorisé pour votre périmètre.',
+                };
+        }
+
+        return null;
+    }
 
     /**
      * Résout la liste des user_id actifs selon le mode de diffusion.
