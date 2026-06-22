@@ -4,7 +4,7 @@ namespace App\Services\Export;
 
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Style\Table as TableStyle;
+use PhpOffice\PhpWord\SimpleType\TblWidth;
 use Illuminate\Http\Response;
 
 class WordExportService
@@ -76,7 +76,7 @@ class WordExportService
             'borderColor' => 'CCCCCC',
             'cellMargin'  => 60,
             'width'       => 100,
-            'unit'        => TableStyle::WIDTH_PERCENT,
+            'unit'        => TblWidth::PERCENT,
         ]);
 
         // Ligne d'en-tête — vert DSP
