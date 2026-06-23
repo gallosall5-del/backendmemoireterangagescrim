@@ -41,4 +41,8 @@ return [
         'threshold'  => env('RECAPTCHA_THRESHOLD', 0.5),
     ],
 
+    // En test/staging uniquement : rediriger tous les OTP vers cette adresse.
+    // Ne pas définir cette variable en production.
+    'otp_override_email' => env('MAIL_OTP_OVERRIDE', null),
+
 ];

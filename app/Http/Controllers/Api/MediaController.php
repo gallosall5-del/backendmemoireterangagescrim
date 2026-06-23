@@ -80,7 +80,11 @@ class MediaController extends ApiController
 
         $uploaded = [];
         foreach ($request->file('files') as $file) {
-            if (!in_array($file->getMimeType(), self::ALLOWED_TYPES)) {
+            // Validation MIME via magic bytes (finfo) — résistante au spoofing d'extension.
+            // getMimeType() de Symfony utilise déjà finfo en interne sur les UploadedFile,
+            // mais on re-vérifie explicitement depuis le contenu brut du fichier temporaire.
+            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
+            if (!in_array($realMime, self::ALLOWED_TYPES)) {
                 continue;
             }
 
@@ -93,7 +97,7 @@ class MediaController extends ApiController
                 'mediable_id'   => $id,
                 'filename'      => $file->getClientOriginalName(),
                 'path'          => $path,
-                'mime_type'     => $file->getMimeType(),
+                'mime_type'     => $realMime,
                 'size'          => $file->getSize(),
             ]);
 

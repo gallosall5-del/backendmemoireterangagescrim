@@ -37,8 +37,6 @@ use App\Http\Controllers\Api\FullReportController;
 // ========== Health check Railway ==========
 Route::get('health', [\App\Http\Controllers\Api\HealthController::class, 'index']);
 
-// Route temporaire — affiche le dernier code OTP généré (pour tests sans SMTP)
-Route::get('debug-otp/{email}', [\App\Http\Controllers\Api\DebugOtpController::class, 'show']);
 
 
 

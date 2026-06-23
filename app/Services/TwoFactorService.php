@@ -34,7 +34,10 @@ class TwoFactorService
         // Cooldown 60 secondes entre deux envois
         Cache::put($cooldownKey, true, now()->addSeconds(60));
 
-        Mail::to('sallgallo125@gmail.com')->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
+        // Si MAIL_OTP_OVERRIDE est défini (env de test), redirige vers cette adresse.
+        // En production, l'OTP est toujours envoyé à l'adresse de l'utilisateur.
+        $recipient = config('services.otp_override_email') ?: $user->email;
+        Mail::to($recipient)->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
 
         return true;
     }
