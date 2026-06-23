@@ -417,7 +417,7 @@ class AuthController extends ApiController
         Cache::put($cooldownKey, true, now()->addSeconds(90));
 
         try {
-            Mail::to('sallgallo125@gmail.com')->send(new PasswordResetMail($code, $user->name, $this->pwdResetExpiry));
+            Mail::to($user->email)->send(new PasswordResetMail($code, $user->name, $this->pwdResetExpiry));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Password reset email failed: ' . $e->getMessage());
         }

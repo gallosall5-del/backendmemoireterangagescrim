@@ -199,6 +199,7 @@ class UserController extends ApiController
             if ($request->filled('role')) {
                 $user->syncRoles([$request->role]);
                 if ($oldRole !== $request->role) {
+                    app(\App\Services\DeviceSessionService::class)->revokeAll($user);
                     AuditLog::create([
                         'user_id'    => auth()->id(),
                         'action'     => 'role_changed',

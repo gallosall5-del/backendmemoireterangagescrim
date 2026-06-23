@@ -69,7 +69,7 @@ class SyncController extends ApiController
                 $data['annee']       = date('Y', strtotime($data['date'] ?? now()));
                 unset($data['victimes']);
                 $record = Infraction::updateOrCreate(
-                    ['local_id' => $localId],
+                    ['local_id' => $localId, 'user_id' => $user->id],
                     $data
                 );
                 $results['synced_infractions'][] = ['local_id' => $localId, 'id' => $record->id];
@@ -107,7 +107,7 @@ class SyncController extends ApiController
                 $data['sync_status'] = 'synced';
                 unset($data['victimes']);
                 $record = Accident::updateOrCreate(
-                    ['local_id' => $localId],
+                    ['local_id' => $localId, 'user_id' => $user->id],
                     $data
                 );
                 $results['synced_accidents'][] = ['local_id' => $localId, 'id' => $record->id];
@@ -141,7 +141,7 @@ class SyncController extends ApiController
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = AmendePieceSaisie::updateOrCreate(
-                    ['local_id' => $localId],
+                    ['local_id' => $localId, 'user_id' => $user->id],
                     $data
                 );
                 $results['synced_amendes'][] = ['local_id' => $localId, 'id' => $record->id];
@@ -161,7 +161,7 @@ class SyncController extends ApiController
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = ImmigrationClandestine::updateOrCreate(
-                    ['local_id' => $localId],
+                    ['local_id' => $localId, 'user_id' => $user->id],
                     $data
                 );
                 $results['synced_immigrations'][] = ['local_id' => $localId, 'id' => $record->id];
@@ -185,7 +185,7 @@ class SyncController extends ApiController
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = ServiceRemunere::updateOrCreate(
-                    ['local_id' => $localId],
+                    ['local_id' => $localId, 'user_id' => $user->id],
                     $data
                 );
                 $results['synced_services_remuneres'][] = ['local_id' => $localId, 'id' => $record->id];
