@@ -211,11 +211,15 @@ class ScopeAccessService
     protected function filterByCommuneScope(Builder $query, string $communeColumn, ScopeType $scopeType, int $scopeId): Builder
     {
         $table = explode('.', $communeColumn)[0];
+        $isServiceContext = ($table === 'services');
 
         if ($scopeType === ScopeType::COMMUNE) {
-            return $query->where(function ($q) use ($communeColumn, $scopeId, $table) {
+            if ($isServiceContext) {
+                return $query->where($communeColumn, $scopeId);
+            }
+            return $query->where(function ($q) use ($communeColumn, $scopeId) {
                 $q->where($communeColumn, $scopeId)
-                  ->orWhere(function ($q2) use ($communeColumn, $scopeId, $table) {
+                  ->orWhere(function ($q2) use ($communeColumn, $scopeId) {
                       $q2->whereNull($communeColumn)
                          ->whereHas('service', fn($s) => $s->where('commune_id', $scopeId));
                   });
@@ -223,6 +227,9 @@ class ScopeAccessService
         }
 
         if ($scopeType === ScopeType::DEPARTEMENT) {
+            if ($isServiceContext) {
+                return $query->whereHas('commune', fn($c) => $c->where('departement_id', $scopeId));
+            }
             return $query->where(function ($q) use ($communeColumn, $scopeId) {
                 $q->whereHas('commune', fn($c) => $c->where('departement_id', $scopeId))
                   ->orWhere(function ($q2) use ($communeColumn, $scopeId) {
@@ -233,6 +240,9 @@ class ScopeAccessService
         }
 
         if ($scopeType === ScopeType::REGION) {
+            if ($isServiceContext) {
+                return $query->whereHas('commune.departement', fn($d) => $d->where('region_id', $scopeId));
+            }
             return $query->where(function ($q) use ($communeColumn, $scopeId) {
                 $q->whereHas('commune.departement', fn($d) => $d->where('region_id', $scopeId))
                   ->orWhere(function ($q2) use ($communeColumn, $scopeId) {
