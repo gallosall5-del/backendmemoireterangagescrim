@@ -79,9 +79,16 @@ class UserController extends ApiController
                                         )
                                     ),
             'admin'        => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin']))
-                                    ->where(fn($q) => $q->whereHas('service', function($sq) use ($me) {
-                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                    })->orWhereNull('service_id')),
+                                    ->where(fn($q) => $q
+                                        ->whereHas('service', function($sq) use ($me) {
+                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                        })
+                                        ->orWhere(fn($q2) => $q2
+                                            ->whereNull('service_id')
+                                            ->where('read_scope_type', 'region')
+                                            ->where('read_scope_id', $me->read_scope_id)
+                                        )
+                                    ),
             default        => null, // super_admin voit tout
         };
 
