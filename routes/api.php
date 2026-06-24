@@ -235,15 +235,15 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     });
 
     // --- Recherche globale ---
-    Route::get('/search', [SearchController::class, 'search'])->middleware('permission:infractions.view');
+    Route::get('/search', [SearchController::class, 'search'])->middleware(['permission:infractions.view', 'throttle:30,1']);
 
     // --- Médias (polymorphique) ---
+    // Téléchargement / suppression en premier pour éviter l'ambiguïté avec /{type}/{id}/media
+    Route::get('/media/{id}/download', [MediaController::class, 'download']);
+    Route::delete('/media/{id}', [MediaController::class, 'destroy']);
     // Upload / liste : POST|GET /api/{type}/{id}/media   (type = infractions|accidents|personnels|victimes)
     Route::get('/{type}/{id}/media', [MediaController::class, 'index'])
         ->where('type', 'infractions|accidents|personnels|victimes');
     Route::post('/{type}/{id}/media', [MediaController::class, 'store'])
         ->where('type', 'infractions|accidents|personnels|victimes');
-    // Téléchargement / suppression : GET|DELETE /api/media/{id}
-    Route::get('/media/{id}/download', [MediaController::class, 'download']);
-    Route::delete('/media/{id}', [MediaController::class, 'destroy']);
 });

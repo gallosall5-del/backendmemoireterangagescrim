@@ -109,18 +109,36 @@ class DashboardController extends ApiController
         $servRem     = $this->applyGenericFilters(ServiceRemunere::visibleByUser(), $request, false);
         $amendes     = $this->applyGenericFilters(AmendePieceSaisie::visibleByUser(), $request);
 
+        $infractionStats = (clone $infractions)
+            ->select('issue', DB::raw('COUNT(*) as total'))
+            ->groupBy('issue')
+            ->get()
+            ->keyBy('issue');
+
+        $accidentStats = (clone $accidents)
+            ->select('type', DB::raw('COUNT(*) as total'))
+            ->groupBy('type')
+            ->get()
+            ->keyBy('type');
+
+        $amendeStats = (clone $amendes)
+            ->select('type', DB::raw('SUM(montant) as total'))
+            ->groupBy('type')
+            ->get()
+            ->keyBy('type');
+
         $data = [
-            'total_infractions'        => (clone $infractions)->count(),
-            'infractions_constatees'   => (clone $infractions)->byIssue('Constatée')->count(),
-            'infractions_deferees'     => (clone $infractions)->byIssue('Déférée')->count(),
-            'total_accidents'          => (clone $accidents)->count(),
-            'accidents_mortels'        => (clone $accidents)->byType('mortel')->count(),
-            'accidents_corporels'      => (clone $accidents)->byType('corporel')->count(),
-            'accidents_materiels'      => (clone $accidents)->byType('matériel')->count(),
+            'total_infractions'        => $infractionStats->sum('total'),
+            'infractions_constatees'   => $infractionStats->get('Constatée')?->total ?? 0,
+            'infractions_deferees'     => $infractionStats->get('Déférée')?->total ?? 0,
+            'total_accidents'          => $accidentStats->sum('total'),
+            'accidents_mortels'        => $accidentStats->get('mortel')?->total ?? 0,
+            'accidents_corporels'      => $accidentStats->get('corporel')?->total ?? 0,
+            'accidents_materiels'      => $accidentStats->get('matériel')?->total ?? 0,
             'total_personnel'          => Personnel::visibleByUser()->byStatut('Actif')->count(),
             'total_immigration'        => (clone $immigration)->sum('nombre_interpellation'),
             'total_services_remuneres' => (clone $servRem)->sum('montant'),
-            'total_amendes'            => (clone $amendes)->byType('Amende')->sum('montant'),
+            'total_amendes'            => $amendeStats->get('Amende')?->total ?? 0,
         ];
 
         return $this->successResponse($data, 'Statistiques globales.');

@@ -83,11 +83,11 @@ class ImmigrationClandestineController extends ApiController
             'nombre_senegalais' => 'nullable|integer|min:0',
             'nombre_etrangers' => 'nullable|integer|min:0',
             'zone_depart' => 'nullable|string|max:255',
-            'zone_depart_lat' => 'nullable|numeric|between:-90,90',
-            'zone_depart_lng' => 'nullable|numeric|between:-180,180',
+            'zone_depart_lat' => 'nullable|numeric|between:12,17',
+            'zone_depart_lng' => 'nullable|numeric|between:-18,-11',
             'zone_arrivee_prevue' => 'nullable|string|max:255',
-            'zone_arrivee_lat' => 'nullable|numeric|between:-90,90',
-            'zone_arrivee_lng' => 'nullable|numeric|between:-180,180',
+            'zone_arrivee_lat' => 'nullable|numeric|between:12,17',
+            'zone_arrivee_lng' => 'nullable|numeric|between:-18,-11',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
@@ -111,7 +111,28 @@ class ImmigrationClandestineController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $immigrationClandestine)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
-        $immigrationClandestine->update($request->all());
+        $validator = Validator::make($request->all(), [
+            'nombre_interpellation' => 'sometimes|integer|min:0',
+            'date' => 'sometimes|date',
+            'heure' => 'nullable|date_format:H:i',
+            'service_id' => 'sometimes|exists:services,id',
+            'nombre_hommes' => 'nullable|integer|min:0',
+            'nombre_femmes' => 'nullable|integer|min:0',
+            'nombre_enfants' => 'nullable|integer|min:0',
+            'nombre_maries' => 'nullable|integer|min:0',
+            'nombre_celibataires' => 'nullable|integer|min:0',
+            'nombre_senegalais' => 'nullable|integer|min:0',
+            'nombre_etrangers' => 'nullable|integer|min:0',
+            'zone_depart' => 'nullable|string|max:255',
+            'zone_depart_lat' => 'nullable|numeric|between:12,17',
+            'zone_depart_lng' => 'nullable|numeric|between:-18,-11',
+            'zone_arrivee_prevue' => 'nullable|string|max:255',
+            'zone_arrivee_lat' => 'nullable|numeric|between:12,17',
+            'zone_arrivee_lng' => 'nullable|numeric|between:-18,-11',
+        ]);
+        if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+
+        $immigrationClandestine->update($validator->validated());
         return $this->successResponse($immigrationClandestine->load('service'), 'Mis à jour.');
     }
 

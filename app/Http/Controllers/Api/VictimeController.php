@@ -64,6 +64,27 @@ class VictimeController extends ApiController
             return $this->errorResponse('La victime doit être liée à une infraction ou un accident.', 422);
         }
 
+        if ($request->infraction_id) {
+            $infraction = \App\Models\Infraction::find($request->infraction_id);
+            if (!$infraction) {
+                return $this->errorResponse('Infraction introuvable.', 404);
+            }
+            $scopeService = app(\App\Services\ScopeAccessService::class);
+            if (!$scopeService->canRead(auth()->user(), $infraction)) {
+                return $this->errorResponse('Accès territorial refusé.', 403);
+            }
+        }
+        if ($request->accident_id) {
+            $accident = \App\Models\Accident::find($request->accident_id);
+            if (!$accident) {
+                return $this->errorResponse('Accident introuvable.', 404);
+            }
+            $scopeService = app(\App\Services\ScopeAccessService::class);
+            if (!$scopeService->canRead(auth()->user(), $accident)) {
+                return $this->errorResponse('Accès territorial refusé.', 403);
+            }
+        }
+
         $victime = Victime::create($request->all());
 
         return $this->successResponse($victime, 'Victime enregistrée avec succès.', 201);

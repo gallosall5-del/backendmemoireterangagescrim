@@ -55,6 +55,21 @@ class CheckTerritorialAccess
                     ], 403);
                 }
             }
+
+            // Vérification croisée service/commune
+            if ($request->has('service_id') && $request->has('commune_id') && $request->input('commune_id')) {
+                $serviceId = (int) $request->input('service_id');
+                $communeId = (int) $request->input('commune_id');
+                $serviceExists = \App\Models\Service::where('id', $serviceId)
+                    ->where('commune_id', $communeId)
+                    ->exists();
+                if (!$serviceExists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Le service sélectionné n\'appartient pas à la commune indiquée.',
+                    ], 422);
+                }
+            }
         }
 
         return $next($request);

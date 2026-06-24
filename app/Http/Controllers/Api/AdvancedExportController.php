@@ -191,7 +191,7 @@ class AdvancedExportController extends ApiController
         [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
         $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
 
-        $query = ImmigrationClandestine::with(['service'])->visibleByUser();
+        $query = ImmigrationClandestine::with(['service', 'user'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
         $records = $query->orderByDesc('date')->orderByDesc('created_at')->get();
 
@@ -249,13 +249,14 @@ class AdvancedExportController extends ApiController
         };
     }
 
-    // PDF et Word nécessitent export.pdf ; Excel nécessite export.csv
     private function checkExportPermission(string $format): bool
     {
         $user = Auth::user();
         return match ($format) {
+            'pdf'   => $user->can('export.pdf'),
+            'word'  => $user->can('export.pdf'),
             'excel' => $user->can('export.csv'),
-            default => $user->can('export.pdf'),
+            default => false,
         };
     }
 
