@@ -38,6 +38,12 @@ services:
         value: sync
       - key: SESSION_DRIVER
         value: file
+      - key: MAIL_OTP_OVERRIDE
+        value: sallgallo125@gmail.com
+      - key: JWT_TTL
+        value: "480"
+      - key: JWT_REFRESH_TTL
+        value: "20160"
     healthCheckPath: /api/health
 
 databases:
