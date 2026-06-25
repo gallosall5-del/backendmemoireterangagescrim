@@ -52,7 +52,7 @@ fi
 PERSONNEL_COUNT=$(php /app/artisan tinker --execute="echo \App\Models\Personnel::count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
 echo "  Personnel count: '${PERSONNEL_COUNT}'" >&2
 if [ -z "$PERSONNEL_COUNT" ] || [ "$PERSONNEL_COUNT" = "0" ]; then
-    echo "  No personnel found — running RealisticDataSeeder..." >&2
+    echo "  No personnel/services-remuneres found — running RealisticDataSeeder..." >&2
     php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
 fi
 

@@ -85,6 +85,7 @@ class RealisticDataSeeder extends Seeder
             $this->seedPersonnel();
             $this->seedImmigration();
             $this->seedVictimes();
+            $this->seedServicesRemuneres();
         });
     }
 
@@ -434,5 +435,53 @@ class RealisticDataSeeder extends Seeder
         }
 
         $this->command->info('✅ Victimes : ' . count($rows) . ' enregistrements créés.');
+    }
+
+    // ─── Services Rémunérés ───────────────────────────────────────────────────
+
+    private function seedServicesRemuneres(): void
+    {
+        $libelles = [
+            'Garde de nuit',
+            'Escorte VIP',
+            'Sécurité événementielle',
+            'Surveillance de site',
+            'Escorte de fonds',
+            'Patrouille spéciale',
+            'Sécurité routière renforcée',
+            'Gardiennage temporaire',
+        ];
+
+        $services = array_values($this->svcByName);
+        if (empty($services)) return;
+
+        $rows = [];
+        $now  = now();
+
+        // 2 à 4 enregistrements par service sur les 6 derniers mois
+        foreach ($services as $svc) {
+            $count = rand(2, 4);
+            for ($i = 0; $i < $count; $i++) {
+                $daysAgo = rand(0, 180);
+                $date    = now()->subDays($daysAgo)->toDateString();
+                $montant = rand(5, 80) * 5000; // 25 000 à 400 000 CFA
+                $rows[]  = [
+                    'libelle'     => $this->rnd($libelles),
+                    'service_id'  => $svc->id,
+                    'date'        => $date,
+                    'montant'     => $montant,
+                    'description' => null,
+                    'user_id'     => $this->userId,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ];
+            }
+        }
+
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::table('services_remuneres')->insert($chunk);
+        }
+
+        $this->command->info('✅ Services rémunérés : ' . count($rows) . ' enregistrements créés.');
     }
 }
