@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Accident;
 use App\Models\Infraction;
 use App\Models\ImmigrationClandestine;
+use App\Models\AmendePieceSaisie;
 use App\Models\AuditLog;
 use App\Services\Export\DateFilterService;
 use App\Services\Export\PDFExportService;
@@ -245,6 +246,73 @@ class AdvancedExportController extends ApiController
                     $r->zone_arrivee_prevue ?? '-',
                 ])->values()->all(),
                 'immigrations'
+            ),
+        };
+    }
+
+    public function amendes(Request $request)
+    {
+        $request->validate([
+            'format'     => 'required|in:pdf,word,excel',
+            'periodType' => 'required|string',
+            'month'      => 'nullable|integer|min:1|max:12',
+            'year'       => 'nullable|integer|min:2000|max:2100',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+        if (!$this->checkExportPermission($request->format)) {
+            return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
+        }
+
+        [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
+        $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
+
+        $query = AmendePieceSaisie::with(['service', 'user'])->visibleByUser();
+        $this->applyDateRange($query, $from, $to);
+        $records = $query->orderByDesc('date')->orderByDesc('created_at')->get();
+
+        $this->logExport('amendes', $request->format, $periodLabel, $records->count());
+
+        return match ($request->format) {
+            'pdf'   => $this->pdfService->generate('exports.advanced.amendes', [
+                'records'        => $records,
+                'titre'          => 'Rapport des Amendes & Pièces Saisies',
+                'date_generation'=> now()->format('d/m/Y H:i'),
+                'agent'          => Auth::user()?->name ?? 'Inconnu',
+                'period_label'   => $periodLabel,
+            ], 'amendes'),
+
+            'excel' => $this->excelService->download(
+                'Rapport des Amendes & Pièces Saisies',
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu',
+                ['#', 'Date', 'Type', 'Service', 'Montant (FCFA)', 'Description'],
+                $records->map(fn($r, $i) => [
+                    $i + 1,
+                    $r->date?->format('d/m/Y') ?? '-',
+                    $r->type ?? '-',
+                    $r->service->nom ?? '-',
+                    $r->montant ?? 0,
+                    $r->description ?? '-',
+                ])->values()->all(),
+                ['TOTAL', '', '', '', $records->sum('montant'), ''],
+                'amendes'
+            ),
+
+            'word' => $this->wordService->download(
+                'Rapport des Amendes & Pièces Saisies',
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu',
+                ['#', 'Date', 'Type', 'Service', 'Montant (FCFA)', 'Description'],
+                $records->map(fn($r, $i) => [
+                    $i + 1,
+                    $r->date?->format('d/m/Y') ?? '-',
+                    $r->type ?? '-',
+                    $r->service->nom ?? '-',
+                    $r->montant ?? 0,
+                    $r->description ?? '-',
+                ])->values()->all(),
+                'amendes'
             ),
         };
     }

@@ -218,6 +218,7 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     Route::post('/accidents/export',    [AdvancedExportController::class, 'accidents'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
     Route::post('/infractions/export',  [AdvancedExportController::class, 'infractions'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
     Route::post('/immigrations/export', [AdvancedExportController::class, 'immigrations'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
+    Route::post('/amendes/export', [AdvancedExportController::class, 'amendes'])->middleware(['throttle:10,1', 'permission:export.pdf|export.csv']);
 
     // --- Rapport complet consolidé (un seul fichier avec toutes les données) ---
     Route::post('/export/full-report', [FullReportController::class, 'generate'])->middleware(['throttle:5,1', 'permission:export.pdf|export.csv']);
