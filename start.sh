@@ -43,9 +43,17 @@ if [ -z "$AGENT_EXISTS" ] || [ "$AGENT_EXISTS" = "0" ]; then
     php /app/artisan db:seed --class=TestUsersSeeder --force 2>&1 || echo "WARN: TestUsersSeeder failed" >&2
     php /app/artisan db:seed --class=InfractionTypeSeeder --force 2>&1 || echo "WARN: InfractionTypeSeeder failed" >&2
     php /app/artisan db:seed --class=DataSeeder --force 2>&1 || echo "WARN: DataSeeder failed" >&2
+    php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
     echo "  Seeding done." >&2
 else
     echo "  All users exist, skipping full seed." >&2
+fi
+
+PERSONNEL_COUNT=$(php /app/artisan tinker --execute="echo \App\Models\Personnel::count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
+echo "  Personnel count: '${PERSONNEL_COUNT}'" >&2
+if [ -z "$PERSONNEL_COUNT" ] || [ "$PERSONNEL_COUNT" = "0" ]; then
+    echo "  No personnel found — running RealisticDataSeeder..." >&2
+    php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
 fi
 
 echo "--- enabling 2FA for all users ---" >&2
