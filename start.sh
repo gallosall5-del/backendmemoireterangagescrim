@@ -23,7 +23,7 @@ echo "--- migrate ---" >&2
 php /app/artisan migrate --force 2>&1 || echo "WARNING: migration failed, server starting anyway" >&2
 
 echo "--- clearing expired login locks (>15 min) ---" >&2
-php /app/artisan tinker --execute="DB::table('login_attempts')->where('created_at','<',now()->subMinutes(15))->delete(); echo 'expired login_attempts cleared';" 2>&1 || true
+php /app/artisan tinker --execute="DB::table('login_attempts')->where('attempted_at','<',now()->subMinutes(15))->delete(); echo 'expired login_attempts cleared';" 2>&1 || true
 
 echo "--- seed (if needed) ---" >&2
 ROLE_COUNT=$(php /app/artisan tinker --execute="echo \Spatie\Permission\Models\Role::count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
