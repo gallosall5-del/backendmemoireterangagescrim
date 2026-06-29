@@ -100,6 +100,7 @@ class RolePermissionSeeder extends Seeder
             'amendes.view', 'amendes.create',
             'immigrations.view', 'immigrations.create',
             'dashboard.view',
+            'parametrage.view',
         ]);
     }
 }

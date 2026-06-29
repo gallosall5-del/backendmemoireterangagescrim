@@ -63,6 +63,8 @@ class SyncController extends ApiController
                     $results['errors'][] = 'Accès territorial refusé (infraction commune ' . $data['commune_id'] . ')';
                     continue;
                 }
+                if (empty($data['type_infraction_id'])) { $results['errors'][] = 'Infraction ignorée : type_infraction_id manquant'; continue; }
+                if (empty($data['commune_id'])) { $results['errors'][] = 'Infraction ignorée : commune_id manquant'; continue; }
                 $localId = $data['local_id'] ?? null;
                 $data['user_id']     = $user->id;
                 $data['sync_status'] = 'synced';
