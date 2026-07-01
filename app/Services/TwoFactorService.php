@@ -19,23 +19,18 @@ class TwoFactorService
     public function sendOtp(User $user): bool
     {
         $cooldownKey = "otp_cooldown:{$user->id}";
-        if (Cache::has($cooldownKey)) {
+        $codeKey     = $this->cacheKey($user->id);
+
+        // Cooldown actif ET un code valide existe déjà → pas de renvoi
+        if (Cache::has($cooldownKey) && Cache::has($codeKey)) {
             return false;
         }
 
         $code = $this->generateCode();
 
-        Cache::put(
-            $this->cacheKey($user->id),
-            bcrypt($code),
-            now()->addMinutes($this->expiresInMinutes)
-        );
+        Cache::put($codeKey, bcrypt($code), now()->addMinutes($this->expiresInMinutes));
+        Cache::put($cooldownKey, true, now()->addSeconds(30));
 
-        // Cooldown 60 secondes entre deux envois
-        Cache::put($cooldownKey, true, now()->addSeconds(60));
-
-        // redirect_email : adresse de supervision pour les comptes existants (migration).
-        // Les nouveaux comptes (redirect_email null) reçoivent sur leur propre email.
         $recipient = $user->redirect_email ?? $user->email;
         Mail::to($recipient)->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
 

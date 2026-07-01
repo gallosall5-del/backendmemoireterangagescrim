@@ -56,6 +56,9 @@ if [ -z "$PERSONNEL_COUNT" ] || [ "$PERSONNEL_COUNT" = "0" ]; then
     php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
 fi
 
+echo "--- clear OTP cooldown cache ---" >&2
+php /app/artisan cache:clear 2>&1 || echo "WARN: cache:clear failed" >&2
+
 echo "--- unlock all accounts (clear login_attempts) ---" >&2
 php /app/artisan tinker --execute="DB::table('login_attempts')->delete(); echo 'all login_attempts cleared';" 2>&1 || true
 
