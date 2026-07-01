@@ -8,17 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('login_attempts', function (Blueprint $table) {
-            $table->index(['email', 'attempted_at']);
-        });
+        $indexes = [
+            'login_attempts'  => [['email', 'attempted_at'], 'login_attempts_email_attempted_at_index'],
+            'audit_logs'      => [['user_id', 'action'],     'audit_logs_user_id_action_index'],
+            'infractions'     => [['user_id'],               'infractions_user_id_index'],
+        ];
 
-        Schema::table('audit_logs', function (Blueprint $table) {
-            $table->index(['user_id', 'action']);
-        });
-
-        Schema::table('infractions', function (Blueprint $table) {
-            $table->index('user_id');
-        });
+        foreach ($indexes as $table => [$cols, $name]) {
+            $exists = collect(\DB::select("SELECT indexname FROM pg_indexes WHERE tablename = ? AND indexname = ?", [$table, $name]))->isNotEmpty();
+            if (!$exists) {
+                Schema::table($table, function (Blueprint $t) use ($cols) {
+                    $t->index($cols);
+                });
+            }
+        }
     }
 
     public function down(): void

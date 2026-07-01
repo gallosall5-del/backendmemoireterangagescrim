@@ -33,11 +33,11 @@ return new class extends Migration
             ['nom' => 'Défaut de feu stop', 'montant_amende' => 5000],
         ];
 
+        // Mettre à jour uniquement les types existants — évite la violation FK sur DB fraîche
         foreach ($routieres as $infraction) {
-            DB::table('type_infractions')->updateOrInsert(
-                ['nom' => $infraction['nom']],
-                ['montant_amende' => $infraction['montant_amende'], 'categorie_infraction_id' => 3, 'created_at' => now(), 'updated_at' => now()]
-            );
+            DB::table('type_infractions')
+                ->where('nom', $infraction['nom'])
+                ->update(['montant_amende' => $infraction['montant_amende']]);
         }
     }
 
