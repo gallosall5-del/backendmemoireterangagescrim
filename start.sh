@@ -56,6 +56,31 @@ if [ -z "$PERSONNEL_COUNT" ] || [ "$PERSONNEL_COUNT" = "0" ]; then
     php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
 fi
 
+echo "--- unlock all accounts (clear login_attempts) ---" >&2
+php /app/artisan tinker --execute="DB::table('login_attempts')->delete(); echo 'all login_attempts cleared';" 2>&1 || true
+
+echo "--- ensure test accounts exist with correct password ---" >&2
+php /app/artisan tinker --execute="
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+\$accounts = [
+    ['email' => 'admin.commissariat@gescrim.sn', 'name' => 'Admin Commissariat Central', 'role' => 'admin', 'scope' => 'service', 'scope_id' => 1, 'service_id' => 1],
+    ['email' => 'admin.dakar@gescrim.sn',        'name' => 'Admin Région Dakar',          'role' => 'admin', 'scope' => 'region',  'scope_id' => 1, 'service_id' => null],
+];
+foreach (\$accounts as \$a) {
+    \$u = User::firstOrCreate(['email' => \$a['email']], [
+        'name' => \$a['name'], 'password' => Hash::make('password123'),
+        'telephone' => '+221 77 000 00 09', 'is_active' => true,
+        'is_2fa_enabled' => true, 'two_factor_confirmed_at' => now(),
+        'service_id' => \$a['service_id'],
+        'read_scope_type' => \$a['scope'], 'read_scope_id' => \$a['scope_id'],
+        'write_scope_type' => \$a['scope'], 'write_scope_id' => \$a['scope_id'],
+    ]);
+    \$u->syncRoles([\$a['role']]);
+    echo 'OK: ' . \$a['email'] . PHP_EOL;
+}
+" 2>&1 || echo "WARN: test accounts ensure failed" >&2
+
 echo "--- enabling 2FA for all users ---" >&2
 php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
 
