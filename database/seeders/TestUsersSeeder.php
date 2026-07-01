@@ -6,49 +6,40 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Region;
-use App\Models\Commune;
-use App\Models\Service;
 
 /**
- * Crée des utilisateurs de test pour chaque région et service.
- * Deux rôles : admin (portée configurable) et agent (portée service).
+ * Crée les utilisateurs de test couvrant toutes les régions et tous les services.
  *
- * Règles de scope :
- *  - admin national : read=national, write=national  (un seul)
- *  - admin région   : read=region,   write=region    (un par région)
- *  - agent          : read=service,  write=service   (un par service)
+ * Résultat attendu :
+ *  - 1  administrateur national
+ *  - 14 gestionnaires (1 par région)
+ *  - N  agents (1 par commissariat/service)
  *
+ * Mot de passe pour tous : passer123
  * Convention email : {role}{slug}@gescrim.sn
- *   ex. agentdakar1@gescrim.sn  admindakar@gescrim.sn
  */
 class TestUsersSeeder extends Seeder
 {
-    /** Transforme un nom en slug court pour l'email (sans accents, sans espaces, max 8 chars). */
     private function slug(string $name): string
     {
         $map = [
-            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
-            'à' => 'a', 'â' => 'a', 'ä' => 'a',
-            'î' => 'i', 'ï' => 'i',
-            'ô' => 'o', 'ö' => 'o',
-            'ù' => 'u', 'û' => 'u', 'ü' => 'u',
-            'ç' => 'c', 'ñ' => 'n',
-            'É' => 'e', 'È' => 'e', 'Ê' => 'e',
-            'À' => 'a', 'Â' => 'a',
-            'Î' => 'i', 'Ô' => 'o',
-            'Ù' => 'u', 'Û' => 'u',
-            'Ç' => 'c',
+            'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','à'=>'a','â'=>'a','ä'=>'a',
+            'î'=>'i','ï'=>'i','ô'=>'o','ö'=>'o','ù'=>'u','û'=>'u','ü'=>'u',
+            'ç'=>'c','ñ'=>'n','É'=>'e','È'=>'e','Ê'=>'e','À'=>'a','Â'=>'a',
+            'Î'=>'i','Ô'=>'o','Ù'=>'u','Û'=>'u','Ç'=>'c',
         ];
-        $normalized = strtr($name, $map);
-        // Garder seulement les lettres et chiffres, tout en minuscules
-        $slug = preg_replace('/[^a-z0-9]/', '', strtolower($normalized));
+        $slug = preg_replace('/[^a-z0-9]/', '', strtolower(strtr($name, $map)));
         return substr($slug, 0, 8);
     }
 
-    /** Crée un utilisateur (ignore si l'email existe déjà). */
     private function makeUser(array $data, string $role): void
     {
         if (User::where('email', $data['email'])->exists()) {
+            $user = User::where('email', $data['email'])->first();
+            // Mettre à jour le rôle si nécessaire
+            if (!$user->hasRole($role)) {
+                $user->syncRoles([$role]);
+            }
             return;
         }
 
@@ -64,37 +55,35 @@ class TestUsersSeeder extends Seeder
 
     public function run(): void
     {
-        // ── 1. Admin national (unique) ────────────────────────────────────────
+        // ── 1. Administrateur national ────────────────────────────────────────
         $this->makeUser([
-            'name'             => 'Admin National',
+            'name'             => 'Administrateur National',
             'email'            => 'admin.national@gescrim.sn',
             'telephone'        => '+221 77 100 00 00',
             'read_scope_type'  => 'national',
             'read_scope_id'    => null,
             'write_scope_type' => 'national',
             'write_scope_id'   => null,
-        ], 'admin');
+        ], 'administrateur');
 
-        // ── 2. Un admin régional et des agents par région ────────────────────
-        $regions = Region::with([
-            'departements.communes.services',
-        ])->get();
+        // ── 2. 14 Gestionnaires régionaux + agents par service ────────────────
+        $regions = Region::with(['departements.communes.services'])->get();
 
         foreach ($regions as $region) {
             $slug = $this->slug($region->nom);
 
-            // Admin régional (portée région)
+            // Gestionnaire régional (1 par région)
             $this->makeUser([
-                'name'             => "Admin {$region->nom}",
-                'email'            => "admin{$slug}@gescrim.sn",
+                'name'             => "Gestionnaire {$region->nom}",
+                'email'            => "gestionnaire{$slug}@gescrim.sn",
                 'telephone'        => '+221 77 300 00 00',
                 'read_scope_type'  => 'region',
                 'read_scope_id'    => $region->id,
                 'write_scope_type' => 'region',
                 'write_scope_id'   => $region->id,
-            ], 'admin');
+            ], 'gestionnaire');
 
-            // Agents (un par service dans la région)
+            // Agents terrain (1 par commissariat/service)
             foreach ($region->departements as $dept) {
                 foreach ($dept->communes as $commune) {
                     foreach ($commune->services as $service) {
@@ -102,7 +91,7 @@ class TestUsersSeeder extends Seeder
                         $email = "agent{$serviceSlug}{$service->id}@gescrim.sn";
 
                         $this->makeUser([
-                            'name'             => "Agent {$commune->nom} ({$service->nom})",
+                            'name'             => "Agent {$commune->nom}",
                             'email'            => $email,
                             'telephone'        => '+221 77 400 00 00',
                             'service_id'       => $service->id,
@@ -117,13 +106,18 @@ class TestUsersSeeder extends Seeder
         }
 
         // ── 3. Résumé ─────────────────────────────────────────────────────────
-        $total = User::count();
+        $total          = User::count();
+        $nbAdmin        = User::role('administrateur')->count();
+        $nbGestionnaire = User::role('gestionnaire')->count();
+        $nbAgent        = User::role('agent')->count();
+
         $this->command->info("TestUsersSeeder terminé — {$total} utilisateurs au total.");
         $this->command->table(
             ['Rôle', 'Nombre'],
             [
-                ['admin', User::role('admin')->count()],
-                ['agent', User::role('agent')->count()],
+                ['administrateur', $nbAdmin],
+                ['gestionnaire',   $nbGestionnaire],
+                ['agent',          $nbAgent],
             ]
         );
     }
