@@ -20,19 +20,15 @@ class AuditLogController extends ApiController
         $query = AuditLog::with('user');
 
         // Restreindre les logs selon la portée territoriale
-        if ($currentRole !== 'admin') {
+        if ($currentRole !== 'administrateur') {
             $visibleUserIds = match ($currentRole) {
                 'gestionnaire' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
                                 ->where(function ($q) use ($me) {
-                                    if ($me->read_scope_type === 'service') {
-                                        $q->where('service_id', $me->service_id);
-                                    } else {
-                                        $q->whereHas('service', function ($sq) use ($me) {
-                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                        })->orWhere(function ($sq) use ($me) {
-                                            $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
-                                        });
-                                    }
+                                    $q->whereHas('service', function ($sq) use ($me) {
+                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                    })->orWhere(function ($sq) use ($me) {
+                                        $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
+                                    });
                                 })->pluck('id'),
                 default => collect([$me->id]),
             };

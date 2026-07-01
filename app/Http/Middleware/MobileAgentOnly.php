@@ -22,7 +22,7 @@ class MobileAgentOnly
             return $next($request);
         }
 
-        if ($user && !$user->hasRole('agent')) {
+        if ($user && !$user->hasRole(['agent', 'gestionnaire', 'administrateur'])) {
             AuditLog::create([
                 'user_id'    => $user->id,
                 'action'     => 'mobile_access_denied',

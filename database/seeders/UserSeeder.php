@@ -6,16 +6,13 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * Seeder pour les utilisateurs de test.
- */
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin national
+        // Administrateur national
         $admin = User::firstOrCreate(['email' => 'admin@gescrim.sn'], [
-            'name'                    => 'Admin Principal',
+            'name'                    => 'Administrateur National',
             'password'                => Hash::make('password123'),
             'telephone'               => '+221 77 000 00 01',
             'is_active'               => true,
@@ -26,11 +23,11 @@ class UserSeeder extends Seeder
             'write_scope_type'        => 'national',
             'write_scope_id'          => null,
         ]);
-        $admin->syncRoles(['admin']);
+        $admin->syncRoles(['administrateur']);
 
-        // Admin régional Dakar (portée région 1)
-        $adminRegion = User::firstOrCreate(['email' => 'admin.dakar@gescrim.sn'], [
-            'name'                    => 'Admin Région Dakar',
+        // Gestionnaire régional Dakar (portée région 1)
+        $gestionnaireRegion = User::firstOrCreate(['email' => 'gestionnaire.dakar@gescrim.sn'], [
+            'name'                    => 'Gestionnaire Région Dakar',
             'password'                => Hash::make('password123'),
             'telephone'               => '+221 77 000 00 02',
             'is_active'               => true,
@@ -41,23 +38,7 @@ class UserSeeder extends Seeder
             'write_scope_type'        => 'region',
             'write_scope_id'          => 1,
         ]);
-        $adminRegion->syncRoles(['admin']);
-
-        // Admin commissariat (portée service 1)
-        $adminService = User::firstOrCreate(['email' => 'admin.commissariat@gescrim.sn'], [
-            'name'                    => 'Admin Commissariat Central',
-            'password'                => Hash::make('password123'),
-            'telephone'               => '+221 77 000 00 03',
-            'service_id'              => 1,
-            'is_active'               => true,
-            'is_2fa_enabled'          => true,
-            'two_factor_confirmed_at' => now(),
-            'read_scope_type'         => 'service',
-            'read_scope_id'           => 1,
-            'write_scope_type'        => 'service',
-            'write_scope_id'          => 1,
-        ]);
-        $adminService->syncRoles(['admin']);
+        $gestionnaireRegion->syncRoles(['gestionnaire']);
 
         // Agent terrain (portée service 1)
         $agent = User::firstOrCreate(['email' => 'agent@gescrim.sn'], [

@@ -32,14 +32,14 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'api']);
         }
 
-        // Admin : toutes les permissions
-        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
-        $admin->syncPermissions(Permission::all());
+        // Administrateur : toutes les permissions, portée nationale
+        $administrateur = Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'api']);
+        $administrateur->syncPermissions(Permission::all());
 
-        // Gestionnaire : toutes les permissions sauf création admin/gestionnaire
+        // Gestionnaire : toutes les permissions sauf admin système, portée régionale
         $gestionnaire = Role::firstOrCreate(['name' => 'gestionnaire', 'guard_name' => 'api']);
         $gestionnaire->syncPermissions([
-            'users.view', 'users.create', 'users.update', 'users.delete',
+            'users.view', 'users.create', 'users.update',
             'personnels.view', 'personnels.create', 'personnels.update', 'personnels.delete',
             'infractions.view', 'infractions.create', 'infractions.update', 'infractions.delete',
             'accidents.view', 'accidents.create', 'accidents.update', 'accidents.delete',
@@ -47,14 +47,14 @@ class RolePermissionSeeder extends Seeder
             'services-remuneres.view', 'services-remuneres.create', 'services-remuneres.update', 'services-remuneres.delete',
             'amendes.view', 'amendes.create', 'amendes.update', 'amendes.delete',
             'immigrations.view', 'immigrations.create', 'immigrations.update', 'immigrations.delete',
-            'parametrage.view', 'parametrage.create', 'parametrage.update', 'parametrage.delete',
+            'parametrage.view',
             'dashboard.view',
             'export.pdf', 'export.csv', 'import.data',
             'audit.view',
             'notifications.send',
         ]);
 
-        // Agent : saisie terrain uniquement (mobile)
+        // Agent : saisie terrain uniquement dans son service (mobile)
         $agent = Role::firstOrCreate(['name' => 'agent', 'guard_name' => 'api']);
         $agent->syncPermissions([
             'personnels.view',
@@ -63,6 +63,7 @@ class RolePermissionSeeder extends Seeder
             'victimes.view', 'victimes.create', 'victimes.update',
             'amendes.view', 'amendes.create',
             'immigrations.view', 'immigrations.create',
+            'services-remuneres.view', 'services-remuneres.create',
             'dashboard.view',
             'parametrage.view',
         ]);

@@ -18,9 +18,9 @@ class UserController extends ApiController
     use \App\Traits\GeneratesSecurePassword;
     // Hiérarchie : les rôles qu'un rôle donné peut attribuer
     private const ASSIGNABLE_ROLES = [
-        'admin'        => ['admin', 'gestionnaire', 'agent'],
-        'gestionnaire' => ['agent'],
-        'agent'        => [],
+        'administrateur' => ['administrateur', 'gestionnaire', 'agent'],
+        'gestionnaire'   => ['gestionnaire', 'agent'],
+        'agent'          => [],
     ];
 
 
@@ -41,13 +41,10 @@ class UserController extends ApiController
         }
 
         if ($currentRole === 'gestionnaire') {
-            // Portée service : uniquement les agents/gestionnaires du même service
-            if ($me->read_scope_type === 'service') {
-                return $me->service_id !== null && $me->service_id === $target->service_id;
-            }
-            // Portée région : tous les agents/gestionnaires de la région
+            // Gestionnaire portée région : gère uniquement les utilisateurs de sa région
             $target->loadMissing('service.commune.departement');
-            return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id;
+            return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id
+                || ($target->read_scope_type === 'region' && $target->read_scope_id === $me->read_scope_id);
         }
 
         return true;
@@ -61,21 +58,19 @@ class UserController extends ApiController
 
         // Filtrer les utilisateurs visibles selon le rôle
         match ($currentRole) {
-            'gestionnaire' => $me->read_scope_type === 'service'
-                ? $query->where('service_id', $me->service_id)
-                        ->whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
-                : $query->whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
-                        ->where(fn($q) => $q
-                            ->whereHas('service', function($sq) use ($me) {
-                                $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                            })
-                            ->orWhere(fn($q2) => $q2
-                                ->where('read_scope_type', 'region')
-                                ->where('read_scope_id', $me->read_scope_id)
-                            )
-                        ),
-            'admin'        => null, // admin voit tout
-            default        => null,
+            'gestionnaire' => $query
+                ->whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
+                ->where(fn($q) => $q
+                    ->whereHas('service', function($sq) use ($me) {
+                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                    })
+                    ->orWhere(fn($q2) => $q2
+                        ->where('read_scope_type', 'region')
+                        ->where('read_scope_id', $me->read_scope_id)
+                    )
+                ),
+            'administrateur' => null, // voit tout
+            default          => null,
         };
 
         if ($request->has('search')) $query->search($request->search);
@@ -113,8 +108,13 @@ class UserController extends ApiController
 
         $me = auth()->user();
         if ($me->getRoleNames()->first() === 'gestionnaire') {
-            if ($request->service_id != $me->service_id) {
-                return $this->errorResponse('Vous ne pouvez créer des utilisateurs que dans votre propre service.', 403);
+            // Le gestionnaire ne peut créer des utilisateurs que dans sa région
+            if ($request->filled('service_id')) {
+                $serviceRegion = \App\Models\Service::with('commune.departement')
+                    ->find($request->service_id)?->commune?->departement?->region_id;
+                if ($serviceRegion !== $me->read_scope_id) {
+                    return $this->errorResponse('Vous ne pouvez créer des utilisateurs que dans votre région.', 403);
+                }
             }
         }
 

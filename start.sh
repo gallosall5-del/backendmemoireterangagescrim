@@ -75,8 +75,9 @@ php /app/artisan tinker --execute="
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 \$accounts = [
-    ['email' => 'admin.commissariat@gescrim.sn', 'name' => 'Admin Commissariat Central', 'role' => 'admin', 'scope' => 'service', 'scope_id' => 1, 'service_id' => 1],
-    ['email' => 'admin.dakar@gescrim.sn',        'name' => 'Admin Région Dakar',          'role' => 'admin', 'scope' => 'region',  'scope_id' => 1, 'service_id' => null],
+    ['email' => 'admin@gescrim.sn',              'name' => 'Administrateur National',    'role' => 'administrateur', 'scope' => 'national', 'scope_id' => null, 'service_id' => null],
+    ['email' => 'gestionnaire.dakar@gescrim.sn', 'name' => 'Gestionnaire Région Dakar',  'role' => 'gestionnaire',   'scope' => 'region',   'scope_id' => 1,    'service_id' => null],
+    ['email' => 'agent@gescrim.sn',              'name' => 'Agent Terrain',               'role' => 'agent',          'scope' => 'service',  'scope_id' => 1,    'service_id' => 1],
 ];
 foreach (\$accounts as \$a) {
     \$u = User::firstOrCreate(['email' => \$a['email']], [

@@ -531,8 +531,8 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole('admin')) {
-            return $this->errorResponse('Action réservée aux administrateurs.', 403);
+        if (!$me->hasRole(['administrateur', 'gestionnaire'])) {
+            return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
         }
 
         $plainPassword = $this->generateSecurePassword();
@@ -661,7 +661,7 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole('admin')) {
+        if (!$me->hasRole('administrateur')) {
             return $this->errorResponse('Action réservée aux administrateurs.', 403);
         }
 
@@ -711,13 +711,17 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['admin', 'gestionnaire'])) {
+        if (!$me->hasRole(['administrateur', 'gestionnaire'])) {
             return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
         }
 
-        // Le gestionnaire à portée service ne peut débloquer que les comptes de son service
-        if ($me->hasRole('gestionnaire') && $me->read_scope_type === 'service' && $me->service_id !== $target->service_id) {
-            return $this->errorResponse('Vous ne pouvez débloquer que les comptes de votre service.', 403);
+        // Le gestionnaire ne peut débloquer que les comptes de sa région
+        if ($me->hasRole('gestionnaire')) {
+            $target->loadMissing('service.commune.departement');
+            $targetRegion = $target->service?->commune?->departement?->region_id;
+            if ($targetRegion !== $me->read_scope_id) {
+                return $this->errorResponse('Vous ne pouvez débloquer que les comptes de votre région.', 403);
+            }
         }
 
         DB::table('login_attempts')

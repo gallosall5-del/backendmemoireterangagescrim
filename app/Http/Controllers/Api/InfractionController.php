@@ -202,7 +202,7 @@ class InfractionController extends ApiController
 
         // Règle métier : modification autorisée dans les 60 minutes suivant la création
         $minutesSinceCreation = $infraction->created_at->diffInMinutes(now());
-        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole('admin')) {
+        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole(['administrateur', 'gestionnaire'])) {
             return $this->errorResponse(
                 'Modification interdite : le délai réglementaire de 60 minutes est dépassé.',
                 403
