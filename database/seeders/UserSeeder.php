@@ -28,9 +28,9 @@ class UserSeeder extends Seeder
         ]);
         $admin->syncRoles(['admin']);
 
-        // Gestionnaire régional Dakar (portée région 1)
-        $gestionnaireRegion = User::firstOrCreate(['email' => 'gestionnaire.dakar@gescrim.sn'], [
-            'name'                    => 'Gestionnaire Région Dakar',
+        // Admin régional Dakar (portée région 1)
+        $adminRegion = User::firstOrCreate(['email' => 'admin.dakar@gescrim.sn'], [
+            'name'                    => 'Admin Région Dakar',
             'password'                => Hash::make('password123'),
             'telephone'               => '+221 77 000 00 02',
             'is_active'               => true,
@@ -41,11 +41,11 @@ class UserSeeder extends Seeder
             'write_scope_type'        => 'region',
             'write_scope_id'          => 1,
         ]);
-        $gestionnaireRegion->syncRoles(['gestionnaire']);
+        $adminRegion->syncRoles(['admin']);
 
-        // Gestionnaire commissariat (portée service 1)
-        $gestionnaire = User::firstOrCreate(['email' => 'gestionnaire@gescrim.sn'], [
-            'name'                    => 'Gestionnaire Commissariat Central',
+        // Admin commissariat (portée service 1)
+        $adminService = User::firstOrCreate(['email' => 'admin.commissariat@gescrim.sn'], [
+            'name'                    => 'Admin Commissariat Central',
             'password'                => Hash::make('password123'),
             'telephone'               => '+221 77 000 00 03',
             'service_id'              => 1,
@@ -57,7 +57,7 @@ class UserSeeder extends Seeder
             'write_scope_type'        => 'service',
             'write_scope_id'          => 1,
         ]);
-        $gestionnaire->syncRoles(['gestionnaire']);
+        $adminService->syncRoles(['admin']);
 
         // Agent terrain (portée service 1)
         $agent = User::firstOrCreate(['email' => 'agent@gescrim.sn'], [

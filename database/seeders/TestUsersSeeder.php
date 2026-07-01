@@ -10,16 +10,16 @@ use App\Models\Commune;
 use App\Models\Service;
 
 /**
- * Crée des utilisateurs de test pour chaque région et service,
- * avec les 3 rôles (admin, gestionnaire, agent).
+ * Crée des utilisateurs de test pour chaque région et service.
+ * Deux rôles : admin (portée configurable) et agent (portée service).
  *
- * Règles de scope par rôle :
- *  - admin        : read=national, write=national  (un seul)
- *  - gestionnaire : read=region,   write=region    (un par région)
- *  - agent        : read=service,  write=service   (un par service)
+ * Règles de scope :
+ *  - admin national : read=national, write=national  (un seul)
+ *  - admin région   : read=region,   write=region    (un par région)
+ *  - agent          : read=service,  write=service   (un par service)
  *
  * Convention email : {role}{slug}@gescrim.sn
- *   ex. agentdakar1@gescrim.sn  gestionnaireDakar@gescrim.sn
+ *   ex. agentdakar1@gescrim.sn  admindakar@gescrim.sn
  */
 class TestUsersSeeder extends Seeder
 {
@@ -75,7 +75,7 @@ class TestUsersSeeder extends Seeder
             'write_scope_id'   => null,
         ], 'admin');
 
-        // ── 2. Un gestionnaire (portée région) et des agents par région ───────
+        // ── 2. Un admin régional et des agents par région ────────────────────
         $regions = Region::with([
             'departements.communes.services',
         ])->get();
@@ -83,16 +83,16 @@ class TestUsersSeeder extends Seeder
         foreach ($regions as $region) {
             $slug = $this->slug($region->nom);
 
-            // Gestionnaire régional (portée région)
+            // Admin régional (portée région)
             $this->makeUser([
-                'name'             => "Gestionnaire {$region->nom}",
-                'email'            => "gestionnaire{$slug}@gescrim.sn",
+                'name'             => "Admin {$region->nom}",
+                'email'            => "admin{$slug}@gescrim.sn",
                 'telephone'        => '+221 77 300 00 00',
                 'read_scope_type'  => 'region',
                 'read_scope_id'    => $region->id,
                 'write_scope_type' => 'region',
                 'write_scope_id'   => $region->id,
-            ], 'gestionnaire');
+            ], 'admin');
 
             // Agents (un par service dans la région)
             foreach ($region->departements as $dept) {
@@ -122,9 +122,8 @@ class TestUsersSeeder extends Seeder
         $this->command->table(
             ['Rôle', 'Nombre'],
             [
-                ['admin',        User::role('admin')->count()],
-                ['gestionnaire', User::role('gestionnaire')->count()],
-                ['agent',        User::role('agent')->count()],
+                ['admin', User::role('admin')->count()],
+                ['agent', User::role('agent')->count()],
             ]
         );
     }
