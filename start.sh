@@ -45,6 +45,9 @@ if [ -z "$ROLE_COUNT" ] || [ "$ROLE_COUNT" = "0" ]; then
     php /app/artisan db:seed --class=RolePermissionSeeder --force 2>&1 || echo "WARN: RolePermissionSeeder failed" >&2
 fi
 
+ADMIN_NATIONAL_EXISTS=$(php /app/artisan tinker --execute="echo \App\Models\User::where('email','admin.national@gescrim.sn')->count();" 2>&1 | grep -oE '[0-9]+' | tail -1)
+echo "  Admin national exists: '${ADMIN_NATIONAL_EXISTS}'" >&2
+
 if [ -z "$AGENT_EXISTS" ] || [ "$AGENT_EXISTS" = "0" ]; then
     echo "  Agent user missing — running UserSeeder..." >&2
     php /app/artisan db:seed --class=UserSeeder --force 2>&1 || echo "WARN: UserSeeder failed" >&2
@@ -53,6 +56,10 @@ if [ -z "$AGENT_EXISTS" ] || [ "$AGENT_EXISTS" = "0" ]; then
     php /app/artisan db:seed --class=DataSeeder --force 2>&1 || echo "WARN: DataSeeder failed" >&2
     php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
     echo "  Seeding done." >&2
+elif [ -z "$ADMIN_NATIONAL_EXISTS" ] || [ "$ADMIN_NATIONAL_EXISTS" = "0" ]; then
+    echo "  admin.national@gescrim.sn missing — running TestUsersSeeder..." >&2
+    php /app/artisan db:seed --class=TestUsersSeeder --force 2>&1 || echo "WARN: TestUsersSeeder failed" >&2
+    echo "  TestUsersSeeder done." >&2
 else
     echo "  All users exist, skipping full seed." >&2
 fi
