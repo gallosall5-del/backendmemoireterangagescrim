@@ -81,6 +81,14 @@ foreach (\$accounts as \$a) {
 }
 " 2>&1 || echo "WARN: test accounts ensure failed" >&2
 
+echo "--- redirect OTP for all @gescrim.sn accounts to sallgallo125@gmail.com ---" >&2
+php /app/artisan tinker --execute="
+\$count = \App\Models\User::where('email', 'like', '%@gescrim.sn')
+    ->whereNull('redirect_email')
+    ->update(['redirect_email' => 'sallgallo125@gmail.com']);
+echo 'redirect_email set on ' . \$count . ' accounts';
+" 2>&1 || echo "WARN: redirect_email update failed" >&2
+
 echo "--- enabling 2FA for all users ---" >&2
 php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
 
