@@ -5,9 +5,17 @@ echo "PORT=${PORT:-8080}" >&2
 echo "APP_ENV=${APP_ENV}" >&2
 php --version >&2
 
-# Wait for database to be reachable (max 30s)
+echo "--- fix storage permissions ---" >&2
+mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/bootstrap/cache
+chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
+
+echo "--- starting PHP server on :${PORT:-8080} (background) ---" >&2
+php -S 0.0.0.0:${PORT:-8080} -t /app/public /app/public/index.php &
+PHP_PID=$!
+
+# Wait for database to be reachable (max 60s)
 echo "--- waiting for database ---" >&2
-MAX_TRIES=15
+MAX_TRIES=30
 TRIES=0
 until php /app/artisan tinker --execute="DB::connection()->getPdo();" 2>/dev/null; do
     TRIES=$((TRIES + 1))
@@ -56,10 +64,6 @@ if [ -z "$PERSONNEL_COUNT" ] || [ "$PERSONNEL_COUNT" = "0" ]; then
     php /app/artisan db:seed --class=RealisticDataSeeder --force 2>&1 || echo "WARN: RealisticDataSeeder failed" >&2
 fi
 
-echo "--- fix storage permissions ---" >&2
-mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/bootstrap/cache
-chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
-
 echo "--- clear OTP cooldown cache ---" >&2
 php /app/artisan cache:clear 2>&1 || echo "WARN: cache:clear failed" >&2
 
@@ -107,5 +111,5 @@ php /app/artisan config:cache 2>&1 || echo "WARN: config:cache failed" >&2
 # route:cache désactivé — incompatible avec certaines routes (closures dans les groups)
 php /app/artisan view:cache 2>&1 || echo "WARN: view:cache failed" >&2
 
-echo "--- starting PHP server on :${PORT:-8080} ---" >&2
-exec php -S 0.0.0.0:${PORT:-8080} -t /app/public /app/public/index.php
+echo "--- init complete, PHP server already running (PID $PHP_PID) ---" >&2
+wait $PHP_PID
