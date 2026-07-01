@@ -31,12 +31,14 @@ class User extends Authenticatable implements JWTSubject
         'is_2fa_enabled',
         'two_factor_secret',
         'two_factor_confirmed_at',
+        'redirect_email',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
         'two_factor_secret',
+        'redirect_email',
     ];
 
     protected function casts(): array

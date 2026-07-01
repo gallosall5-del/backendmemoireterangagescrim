@@ -10,17 +10,16 @@ use App\Models\Commune;
 use App\Models\Service;
 
 /**
- * Crée des utilisateurs de test pour chaque région et commune,
- * avec les 4 rôles (super_admin, admin, superviseur, agent).
+ * Crée des utilisateurs de test pour chaque région et service,
+ * avec les 3 rôles (admin, gestionnaire, agent).
  *
  * Règles de scope par rôle :
- *  - super_admin : read=national, write=national  (un seul, partagé)
- *  - admin       : read=national, write=national  (un par région)
- *  - superviseur : read=region,   write=region    (un par région)
- *  - agent       : read=service,  write=service   (un par service)
+ *  - admin        : read=national, write=national  (un seul)
+ *  - gestionnaire : read=region,   write=region    (un par région)
+ *  - agent        : read=service,  write=service   (un par service)
  *
  * Convention email : {role}{slug}@gescrim.sn
- *   ex. agentdakar@gescrim.sn  superviseurmb@gescrim.sn
+ *   ex. agentdakar1@gescrim.sn  gestionnaireDakar@gescrim.sn
  */
 class TestUsersSeeder extends Seeder
 {
@@ -65,18 +64,18 @@ class TestUsersSeeder extends Seeder
 
     public function run(): void
     {
-        // ── 1. Super admin national (unique) ─────────────────────────────────
+        // ── 1. Admin national (unique) ────────────────────────────────────────
         $this->makeUser([
-            'name'             => 'Super Admin National',
-            'email'            => 'superadmin@gescrim.sn',
+            'name'             => 'Admin National',
+            'email'            => 'admin.national@gescrim.sn',
             'telephone'        => '+221 77 100 00 00',
             'read_scope_type'  => 'national',
             'read_scope_id'    => null,
             'write_scope_type' => 'national',
             'write_scope_id'   => null,
-        ], 'super_admin');
+        ], 'admin');
 
-        // ── 2. Un admin, un superviseur et des agents par région ─────────────
+        // ── 2. Un gestionnaire (portée région) et des agents par région ───────
         $regions = Region::with([
             'departements.communes.services',
         ])->get();
@@ -84,34 +83,22 @@ class TestUsersSeeder extends Seeder
         foreach ($regions as $region) {
             $slug = $this->slug($region->nom);
 
-            // Admin (portée nationale, rattaché à la région par convention d'email)
+            // Gestionnaire régional (portée région)
             $this->makeUser([
-                'name'             => "Admin {$region->nom}",
-                'email'            => "admin{$slug}@gescrim.sn",
-                'telephone'        => '+221 77 200 00 00',
-                'read_scope_type'  => 'national',
-                'read_scope_id'    => null,
-                'write_scope_type' => 'national',
-                'write_scope_id'   => null,
-            ], 'admin');
-
-            // Superviseur (portée région)
-            $this->makeUser([
-                'name'             => "Superviseur {$region->nom}",
-                'email'            => "superviseur{$slug}@gescrim.sn",
+                'name'             => "Gestionnaire {$region->nom}",
+                'email'            => "gestionnaire{$slug}@gescrim.sn",
                 'telephone'        => '+221 77 300 00 00',
                 'read_scope_type'  => 'region',
                 'read_scope_id'    => $region->id,
                 'write_scope_type' => 'region',
                 'write_scope_id'   => $region->id,
-            ], 'superviseur');
+            ], 'gestionnaire');
 
             // Agents (un par service dans la région)
             foreach ($region->departements as $dept) {
                 foreach ($dept->communes as $commune) {
                     foreach ($commune->services as $service) {
                         $serviceSlug = $this->slug($commune->nom);
-                        // Suffixe numérique si plusieurs services dans la même commune
                         $email = "agent{$serviceSlug}{$service->id}@gescrim.sn";
 
                         $this->makeUser([
@@ -135,9 +122,8 @@ class TestUsersSeeder extends Seeder
         $this->command->table(
             ['Rôle', 'Nombre'],
             [
-                ['super_admin',  User::role('super_admin')->count()],
                 ['admin',        User::role('admin')->count()],
-                ['superviseur',  User::role('superviseur')->count()],
+                ['gestionnaire', User::role('gestionnaire')->count()],
                 ['agent',        User::role('agent')->count()],
             ]
         );

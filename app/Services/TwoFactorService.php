@@ -34,9 +34,9 @@ class TwoFactorService
         // Cooldown 60 secondes entre deux envois
         Cache::put($cooldownKey, true, now()->addSeconds(60));
 
-        // Si MAIL_OTP_OVERRIDE est défini (env de test), redirige vers cette adresse.
-        // En production, l'OTP est toujours envoyé à l'adresse de l'utilisateur.
-        $recipient = config('services.otp_override_email') ?: $user->email;
+        // redirect_email : adresse de supervision pour les comptes existants (migration).
+        // Les nouveaux comptes (redirect_email null) reçoivent sur leur propre email.
+        $recipient = $user->redirect_email ?? $user->email;
         Mail::to($recipient)->send(new OtpMail($code, $user->name, $this->expiresInMinutes));
 
         return true;
@@ -76,15 +76,12 @@ class TwoFactorService
     }
 
     /**
-     * Désactiver le 2FA.
+     * La désactivation de la 2FA est interdite par politique de sécurité.
+     * Cette méthode lève une exception si appelée.
      */
     public function disable(User $user): void
     {
-        $user->update([
-            'is_2fa_enabled'          => false,
-            'two_factor_secret'       => null,
-            'two_factor_confirmed_at' => null,
-        ]);
+        throw new \RuntimeException('La désactivation de la 2FA est interdite.');
     }
 
     private function generateCode(): string

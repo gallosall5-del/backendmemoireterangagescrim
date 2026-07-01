@@ -18,7 +18,8 @@ class AmendePieceSaisie extends Model
 
     protected $fillable = [
         'workflow_status', 'local_id',
-        'type', 'service_id', 'date', 'heure', 'montant', 'description', 'user_id',
+        'type', 'service_id', 'commune_id', 'date', 'heure', 'lieu',
+        'montant', 'description', 'plaque_immatriculation', 'user_id',
     ];
 
     protected function casts(): array

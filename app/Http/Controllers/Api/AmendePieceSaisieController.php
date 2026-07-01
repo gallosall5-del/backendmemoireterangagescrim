@@ -40,7 +40,7 @@ class AmendePieceSaisieController extends ApiController
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $data = $request->all();
+        $data = $request->only(['type', 'service_id', 'date', 'heure', 'lieu', 'montant', 'description', 'plaque_immatriculation', 'local_id', 'workflow_status']);
         $data['user_id'] = auth()->id();
         $amende = AmendePieceSaisie::create($data);
         return $this->successResponse($amende->load('service'), 'Enregistré avec succès.', 201);
@@ -61,7 +61,7 @@ class AmendePieceSaisieController extends ApiController
             'description' => 'nullable|string',
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
-        $amendePieceSaisie->update($request->all());
+        $amendePieceSaisie->update($request->only(['type', 'service_id', 'date', 'heure', 'lieu', 'montant', 'description', 'plaque_immatriculation', 'workflow_status']));
         return $this->successResponse($amendePieceSaisie->load('service'), 'Mis à jour.');
     }
 

@@ -39,7 +39,7 @@ class ServiceRemunereController extends ApiController
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $data = $request->all();
+        $data = $request->only(['libelle', 'service_id', 'date', 'heure', 'montant', 'description', 'local_id', 'workflow_status']);
         $data['user_id'] = auth()->id();
         $sr = ServiceRemunere::create($data);
         return $this->successResponse($sr->load('service'), 'Service rémunéré enregistré.', 201);
@@ -51,7 +51,16 @@ class ServiceRemunereController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $serviceRemunere)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
-        $serviceRemunere->update($request->all());
+        $validator = Validator::make($request->all(), [
+            'libelle'     => 'sometimes|string|max:255',
+            'service_id'  => 'sometimes|exists:services,id',
+            'date'        => 'sometimes|date',
+            'heure'       => 'nullable|date_format:H:i',
+            'montant'     => 'sometimes|numeric|min:0',
+            'description' => 'nullable|string',
+        ]);
+        if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        $serviceRemunere->update($request->only(['libelle', 'service_id', 'date', 'heure', 'montant', 'description', 'workflow_status']));
         return $this->successResponse($serviceRemunere->load('service'), 'Mis à jour.');
     }
 

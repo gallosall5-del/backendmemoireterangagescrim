@@ -116,10 +116,9 @@ class NotificationController extends ApiController
 
         // Diffusions autorisées par rôle
         $allowedDiffusions = match ($currentRole) {
-            'gestionnaire' => ['service', 'user', 'users'],
-            'admin'        => ['region', 'departement', 'commune', 'service', 'user', 'users'],
-            'superviseur'  => ['region', 'departement', 'commune', 'service', 'user', 'users'],
-            default        => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
+            'gestionnaire' => ['region', 'departement', 'commune', 'service', 'user', 'users'],
+            'admin'        => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
+            default        => [],
         };
 
         $validator = Validator::make($request->all(), [
@@ -153,17 +152,17 @@ class NotificationController extends ApiController
             }
         }
 
-        // Le gestionnaire ne peut notifier que son propre service
-        if ($currentRole === 'gestionnaire' && $diffusion === 'service' && (int)$targetId !== $me->service_id) {
-            return $this->errorResponse('Vous ne pouvez notifier que votre propre service.', 403);
-        }
-
-        // Vérifier que les utilisateurs ciblés (multi) appartiennent au service du gestionnaire
-        if ($currentRole === 'gestionnaire' && $diffusion === 'users') {
-            $allowed = User::where('service_id', $me->service_id)->pluck('id')->toArray();
-            $forbidden = array_diff($targetIds, $allowed);
-            if (!empty($forbidden)) {
-                return $this->errorResponse('Vous ne pouvez notifier que les agents de votre propre service.', 403);
+        // Gestionnaire portée service : ne peut notifier que son propre service/agents
+        if ($currentRole === 'gestionnaire' && $me->read_scope_type === 'service') {
+            if ($diffusion === 'service' && (int)$targetId !== $me->service_id) {
+                return $this->errorResponse('Vous ne pouvez notifier que votre propre service.', 403);
+            }
+            if ($diffusion === 'users') {
+                $allowed = User::where('service_id', $me->service_id)->pluck('id')->toArray();
+                $forbidden = array_diff($targetIds, $allowed);
+                if (!empty($forbidden)) {
+                    return $this->errorResponse('Vous ne pouvez notifier que les agents de votre propre service.', 403);
+                }
             }
         }
 
@@ -367,7 +366,7 @@ class NotificationController extends ApiController
                 break;
 
             case 'role':
-                // Par rôle Spatie (ex: "agent", "superviseur", "admin", "super_admin")
+                // Par rôle Spatie (ex: "agent", "admin")
                 $query->whereHas('roles', fn($q) => $q->where('name', $targetId));
                 break;
 

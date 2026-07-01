@@ -417,7 +417,8 @@ class AuthController extends ApiController
         Cache::put($cooldownKey, true, now()->addSeconds(90));
 
         try {
-            Mail::to('sallgallo125@gmail.com')->send(new PasswordResetMail($code, $user->name, $this->pwdResetExpiry));
+            $recipient = $user->redirect_email ?? $user->email;
+            Mail::to($recipient)->send(new PasswordResetMail($code, $user->name, $this->pwdResetExpiry));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Password reset email failed: ' . $e->getMessage());
         }
@@ -530,13 +531,8 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['super_admin', 'admin'])) {
+        if (!$me->hasRole('admin')) {
             return $this->errorResponse('Action réservée aux administrateurs.', 403);
-        }
-
-        // Un admin ne peut pas reset le mot de passe d'un super_admin
-        if ($target->hasRole('super_admin') && !$me->hasRole('super_admin')) {
-            return $this->errorResponse('Vous ne pouvez pas réinitialiser le mot de passe d\'un super administrateur.', 403);
         }
 
         $plainPassword = $this->generateSecurePassword();
@@ -665,12 +661,8 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['super_admin', 'admin'])) {
+        if (!$me->hasRole('admin')) {
             return $this->errorResponse('Action réservée aux administrateurs.', 403);
-        }
-
-        if ($target->hasRole('super_admin') && !$me->hasRole('super_admin')) {
-            return $this->errorResponse('Vous ne pouvez pas révoquer les sessions d\'un super administrateur.', 403);
         }
 
         $this->deviceSession->revokeAll($target);
@@ -690,73 +682,17 @@ class AuthController extends ApiController
 
     /**
      * POST /api/auth/2fa/admin-disable/{target}
-     * Permet à un super_admin de désactiver la 2FA d'un compte bloqué (urgence).
-     * Réservé au super_admin uniquement, loggé dans AuditLog.
+     * La désactivation de la 2FA est interdite pour tous les utilisateurs.
      */
     public function adminDisable2fa(Request $request, User $target): JsonResponse
     {
-        $me = auth()->user();
-
-        if (!$me->hasRole('super_admin')) {
-            return $this->errorResponse('Action réservée au super administrateur.', 403);
-        }
-
-        if (!$target->is_2fa_enabled) {
-            return $this->errorResponse('La 2FA n\'est pas activée sur ce compte.', 409);
-        }
-
-        $this->twoFactor->disable($target);
-
-        AuditLog::create([
-            'user_id'    => $me->id,
-            'action'     => '2fa_admin_disabled',
-            'model_type' => User::class,
-            'model_id'   => $target->id,
-            'new_values' => ['disabled_by' => $me->email, 'target' => $target->email],
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        return $this->successResponse(null, 'Double authentification désactivée pour ' . $target->name . '. L\'utilisateur devra la réactiver à sa prochaine connexion.');
+        return $this->errorResponse('La double authentification est obligatoire et ne peut pas être désactivée.', 403);
     }
 
-    /** POST /api/auth/2fa/disable — désactive 2FA après vérification du mot de passe */
+    /** POST /api/auth/2fa/disable — désactivation interdite */
     public function disable2fa(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->errorResponse('Mot de passe requis.', 422);
-        }
-
-        $user = auth()->user();
-
-        if (!Hash::check($request->password, $user->password)) {
-            return $this->errorResponse('Mot de passe incorrect.', 401);
-        }
-
-        // Admins ne peuvent pas désactiver 2FA si c'est obligatoire
-        if ($user->hasRole(['super_admin', 'admin'])) {
-            return $this->errorResponse(
-                'Les administrateurs ne peuvent pas désactiver la double authentification.',
-                403
-            );
-        }
-
-        $this->twoFactor->disable($user);
-
-        AuditLog::create([
-            'user_id'    => $user->id,
-            'action'     => '2fa_disabled',
-            'model_type' => User::class,
-            'model_id'   => $user->id,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        return $this->successResponse(null, 'Double authentification désactivée.');
+        return $this->errorResponse('La double authentification est obligatoire et ne peut pas être désactivée.', 403);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -775,12 +711,12 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['super_admin', 'admin', 'gestionnaire'])) {
+        if (!$me->hasRole(['admin', 'gestionnaire'])) {
             return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
         }
 
-        // Le gestionnaire ne peut débloquer que des agents de son service
-        if ($me->hasRole('gestionnaire') && $me->service_id !== $target->service_id) {
+        // Le gestionnaire à portée service ne peut débloquer que les comptes de son service
+        if ($me->hasRole('gestionnaire') && $me->read_scope_type === 'service' && $me->service_id !== $target->service_id) {
             return $this->errorResponse('Vous ne pouvez débloquer que les comptes de votre service.', 403);
         }
 

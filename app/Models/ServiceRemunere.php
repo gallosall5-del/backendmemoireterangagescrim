@@ -17,7 +17,7 @@ class ServiceRemunere extends Model
     protected $table = 'services_remuneres';
 
     protected $fillable = [
-        'local_id', 'libelle', 'service_id', 'date', 'heure', 'montant', 'description', 'user_id',
+        'local_id', 'libelle', 'service_id', 'commune_id', 'date', 'heure', 'montant', 'description', 'user_id', 'workflow_status',
     ];
 
     protected function casts(): array

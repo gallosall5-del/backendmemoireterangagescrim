@@ -18,10 +18,8 @@ class UserController extends ApiController
     use \App\Traits\GeneratesSecurePassword;
     // Hiérarchie : les rôles qu'un rôle donné peut attribuer
     private const ASSIGNABLE_ROLES = [
-        'super_admin'  => ['super_admin', 'admin', 'gestionnaire', 'superviseur', 'agent'],
-        'admin'        => ['gestionnaire', 'superviseur', 'agent'],
-        'gestionnaire' => ['gestionnaire', 'agent'],
-        'superviseur'  => [],
+        'admin'        => ['admin', 'gestionnaire', 'agent'],
+        'gestionnaire' => ['agent'],
         'agent'        => [],
     ];
 
@@ -43,14 +41,11 @@ class UserController extends ApiController
         }
 
         if ($currentRole === 'gestionnaire') {
-            return $me->service_id !== null && $me->service_id === $target->service_id;
-        }
-
-        // Le superviseur ne peut gérer que les utilisateurs rattachés à sa région
-        if ($currentRole === 'superviseur') {
-            if ($target->service_id === null) {
-                return false;
+            // Portée service : uniquement les agents/gestionnaires du même service
+            if ($me->read_scope_type === 'service') {
+                return $me->service_id !== null && $me->service_id === $target->service_id;
             }
+            // Portée région : tous les agents/gestionnaires de la région
             $target->loadMissing('service.commune.departement');
             return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id;
         }
@@ -66,30 +61,21 @@ class UserController extends ApiController
 
         // Filtrer les utilisateurs visibles selon le rôle
         match ($currentRole) {
-            'gestionnaire' => $query->where('service_id', $me->service_id)
-                                    ->whereHas('roles', fn($q) => $q->where('name', 'agent')),
-            'superviseur'  => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
-                                    ->where(fn($q) => $q
-                                        ->whereHas('service', function($sq) use ($me) {
-                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                        })
-                                        ->orWhere(fn($q2) => $q2
-                                            ->where('read_scope_type', 'region')
-                                            ->where('read_scope_id', $me->read_scope_id)
-                                        )
-                                    ),
-            'admin'        => $query->whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin']))
-                                    ->where(fn($q) => $q
-                                        ->whereHas('service', function($sq) use ($me) {
-                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                        })
-                                        ->orWhere(fn($q2) => $q2
-                                            ->whereNull('service_id')
-                                            ->where('read_scope_type', 'region')
-                                            ->where('read_scope_id', $me->read_scope_id)
-                                        )
-                                    ),
-            default        => null, // super_admin voit tout
+            'gestionnaire' => $me->read_scope_type === 'service'
+                ? $query->where('service_id', $me->service_id)
+                        ->whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
+                : $query->whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
+                        ->where(fn($q) => $q
+                            ->whereHas('service', function($sq) use ($me) {
+                                $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                            })
+                            ->orWhere(fn($q2) => $q2
+                                ->where('read_scope_type', 'region')
+                                ->where('read_scope_id', $me->read_scope_id)
+                            )
+                        ),
+            'admin'        => null, // admin voit tout
+            default        => null,
         };
 
         if ($request->has('search')) $query->search($request->search);
@@ -111,7 +97,7 @@ class UserController extends ApiController
             'name'             => 'required|string|max:255',
             'email'            => 'required|email|unique:users,email',
             'telephone'        => 'nullable|string|max:20',
-            'service_id'       => 'required_if:role,agent|required_if:role,superviseur|nullable|exists:services,id',
+            'service_id'       => 'required_if:role,agent|nullable|exists:services,id',
             'role'             => 'required|string|exists:roles,name',
             'is_active'        => 'nullable|boolean',
             'read_scope_type'  => 'nullable|in:service,commune,departement,region,national',

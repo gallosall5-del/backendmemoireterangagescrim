@@ -20,22 +20,19 @@ class AuditLogController extends ApiController
         $query = AuditLog::with('user');
 
         // Restreindre les logs selon la portée territoriale
-        if ($currentRole !== 'super_admin') {
-            // Construire la liste des user_id visibles selon le rôle
+        if ($currentRole !== 'admin') {
             $visibleUserIds = match ($currentRole) {
-                'admin' => User::whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
-                               ->where(function ($q) use ($me) {
-                                   $q->whereHas('service', function ($sq) use ($me) {
-                                       $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                   });
-                               })->pluck('id'),
-                'superviseur' => User::whereHas('roles', fn($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
+                'gestionnaire' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
                                 ->where(function ($q) use ($me) {
-                                    $q->whereHas('service', function ($sq) use ($me) {
-                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                    })->orWhere(function ($sq) use ($me) {
-                                        $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
-                                    });
+                                    if ($me->read_scope_type === 'service') {
+                                        $q->where('service_id', $me->service_id);
+                                    } else {
+                                        $q->whereHas('service', function ($sq) use ($me) {
+                                            $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                                        })->orWhere(function ($sq) use ($me) {
+                                            $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
+                                        });
+                                    }
                                 })->pluck('id'),
                 default => collect([$me->id]),
             };
