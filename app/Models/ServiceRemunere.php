@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Auditable;
 use App\Traits\HasTerritorialScope;
+use App\Models\Commune;
 
 /**
  * Modèle pour les services rémunérés.
@@ -31,6 +32,11 @@ class ServiceRemunere extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function commune()
+    {
+        return $this->belongsTo(Commune::class);
     }
 
     public function user()
