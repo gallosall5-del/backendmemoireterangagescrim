@@ -10,18 +10,14 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Administrateur national
+        // Administrateur
         $admin = User::firstOrCreate(['email' => 'admin@gescrim.sn'], [
-            'name'                    => 'Administrateur National',
+            'name'                    => 'Administrateur',
             'password'                => Hash::make('password123'),
             'telephone'               => '+221 77 000 00 01',
             'is_active'               => true,
             'is_2fa_enabled'          => true,
             'two_factor_confirmed_at' => now(),
-            'read_scope_type'         => 'national',
-            'read_scope_id'           => null,
-            'write_scope_type'        => 'national',
-            'write_scope_id'          => null,
         ]);
         $admin->syncRoles(['administrateur']);
 

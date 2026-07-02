@@ -710,15 +710,6 @@ class AuthController extends ApiController
             return $this->errorResponse('Action réservée aux administrateurs.', 403);
         }
 
-        // Administrateur avec portée limitée : ne peut débloquer que les comptes de sa zone
-        if ($me->read_scope_type?->value !== 'national') {
-            $target->loadMissing('service.commune.departement');
-            $targetRegion = $target->service?->commune?->departement?->region_id;
-            if ($targetRegion !== $me->read_scope_id) {
-                return $this->errorResponse('Vous ne pouvez débloquer que les comptes de votre région.', 403);
-            }
-        }
-
         DB::table('login_attempts')
             ->where('email', $target->email)
             ->where('success', false)
@@ -817,7 +808,7 @@ class AuthController extends ApiController
         $response = $this->successResponse($responseData, 'Connexion réussie.');
 
         $isProduction = config('app.env') === 'production';
-        // SameSite=None requis pour les requêtes cross-origin (Vercel → Render)
+        // SameSite=None requis pour les requêtes cross-origin (frontend hébergé séparément)
         // SameSite=None exige Secure=true en production
         $sameSite = $isProduction ? 'None' : 'Lax';
 

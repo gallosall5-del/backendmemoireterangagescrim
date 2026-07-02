@@ -1,7 +1,6 @@
 #!/bin/sh
 
 echo "=== GESCRIM startup ===" >&2
-echo "PORT=${PORT:-8080}" >&2
 echo "APP_ENV=${APP_ENV}" >&2
 php --version >&2
 
@@ -9,8 +8,8 @@ echo "--- fix storage permissions ---" >&2
 mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/bootstrap/cache
 chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
 
-echo "--- starting PHP server on :${PORT:-8080} (background) ---" >&2
-php -S 0.0.0.0:${PORT:-8080} -t /app/public /app/public/index.php &
+echo "--- starting PHP server on :${PORT:-8000} (background) ---" >&2
+php -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
 PHP_PID=$!
 
 # Wait for database to be reachable (max 60s)
@@ -82,9 +81,8 @@ php /app/artisan tinker --execute="
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 \$accounts = [
-    ['email' => 'admin@gescrim.sn',       'name' => 'Administrateur National',         'role' => 'administrateur', 'scope' => 'national', 'scope_id' => null, 'service_id' => null],
-    ['email' => 'admin.dakar@gescrim.sn', 'name' => 'Administrateur Région Dakar',     'role' => 'administrateur', 'scope' => 'region',   'scope_id' => 1,    'service_id' => null],
-    ['email' => 'agent@gescrim.sn',       'name' => 'Agent Terrain',                   'role' => 'agent',          'scope' => 'service',  'scope_id' => 1,    'service_id' => 1],
+    ['email' => 'admin@gescrim.sn', 'name' => 'Administrateur',  'role' => 'administrateur', 'scope' => 'national', 'scope_id' => null, 'service_id' => null],
+    ['email' => 'agent@gescrim.sn', 'name' => 'Agent Terrain',   'role' => 'agent',          'scope' => 'service',  'scope_id' => 1,    'service_id' => 1],
 ];
 foreach (\$accounts as \$a) {
     \$u = User::firstOrCreate(['email' => \$a['email']], [
@@ -99,14 +97,6 @@ foreach (\$accounts as \$a) {
     echo 'OK: ' . \$a['email'] . PHP_EOL;
 }
 " 2>&1 || echo "WARN: test accounts ensure failed" >&2
-
-echo "--- redirect OTP for all @gescrim.sn accounts to sallgallo125@gmail.com ---" >&2
-php /app/artisan tinker --execute="
-\$count = \App\Models\User::where('email', 'like', '%@gescrim.sn')
-    ->whereNull('redirect_email')
-    ->update(['redirect_email' => 'sallgallo125@gmail.com']);
-echo 'redirect_email set on ' . \$count . ' accounts';
-" 2>&1 || echo "WARN: redirect_email update failed" >&2
 
 echo "--- enabling 2FA for all users ---" >&2
 php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2

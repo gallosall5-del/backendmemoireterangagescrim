@@ -19,22 +19,19 @@ class AuditLogController extends ApiController
 
         $query = AuditLog::with('user');
 
-        // Restreindre les logs selon la portée territoriale
-        if ($currentRole !== 'administrateur') {
-            $visibleUserIds = match ($currentRole) {
-                'gestionnaire' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['gestionnaire', 'agent']))
-                                ->where(function ($q) use ($me) {
-                                    $q->whereHas('service', function ($sq) use ($me) {
-                                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                                    })->orWhere(function ($sq) use ($me) {
-                                        $sq->where('read_scope_type', 'region')->where('read_scope_id', $me->read_scope_id);
-                                    });
-                                })->pluck('id'),
-                default => collect([$me->id]),
-            };
-
+        // Restreindre les logs selon le rôle
+        if ($currentRole === 'gestionnaire') {
+            // Gestionnaire : voit uniquement les logs des agents de sa région
+            $visibleUserIds = User::whereHas('roles', fn($q) => $q->where('name', 'agent'))
+                ->whereHas('service', function ($sq) use ($me) {
+                    $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                })->pluck('id');
             $query->whereIn('user_id', $visibleUserIds);
+        } elseif ($currentRole === 'agent') {
+            // Agent : voit uniquement ses propres logs
+            $query->where('user_id', $me->id);
         }
+        // Administrateur : voit tous les logs sans restriction
 
         if ($request->has('user_id')) $query->byUser($request->user_id);
         if ($request->has('action')) $query->byAction($request->action);

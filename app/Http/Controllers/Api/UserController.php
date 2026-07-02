@@ -18,7 +18,8 @@ class UserController extends ApiController
     use \App\Traits\GeneratesSecurePassword;
     // Hiérarchie : les rôles qu'un rôle donné peut attribuer
     private const ASSIGNABLE_ROLES = [
-        'administrateur' => ['administrateur', 'agent'],
+        'administrateur' => ['administrateur', 'gestionnaire', 'agent'],
+        'gestionnaire'   => ['agent'],
         'agent'          => [],
     ];
 
@@ -39,13 +40,13 @@ class UserController extends ApiController
             return false;
         }
 
-        // Administrateur avec portée limitée : gère uniquement les utilisateurs de sa zone
-        if ($currentRole === 'administrateur' && $me->read_scope_type?->value !== 'national') {
+        // Gestionnaire : gère uniquement les agents de sa région
+        if ($currentRole === 'gestionnaire') {
             $target->loadMissing('service.commune.departement');
-            return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id
-                || ($target->read_scope_type?->value === 'region' && $target->read_scope_id === $me->read_scope_id);
+            return optional($target->service?->commune?->departement)->region_id === $me->read_scope_id;
         }
 
+        // Administrateur : gère tous les utilisateurs sans restriction
         return true;
     }
     public function index(Request $request): JsonResponse
@@ -55,21 +56,14 @@ class UserController extends ApiController
 
         $query = User::with(['service', 'roles']);
 
-        // Filtrer les utilisateurs visibles selon le rôle
-        if ($currentRole === 'administrateur' && $me->read_scope_type?->value !== 'national') {
-            // Administrateur avec portée limitée : ne voit que les utilisateurs de sa région
-            $query->whereHas('roles', fn($q) => $q->whereIn('name', ['administrateur', 'agent']))
-                ->where(fn($q) => $q
-                    ->whereHas('service', function($sq) use ($me) {
-                        $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
-                    })
-                    ->orWhere(fn($q2) => $q2
-                        ->where('read_scope_type', 'region')
-                        ->where('read_scope_id', $me->read_scope_id)
-                    )
-                );
+        // Gestionnaire : voit uniquement les agents de sa région
+        if ($currentRole === 'gestionnaire') {
+            $query->whereHas('roles', fn($q) => $q->where('name', 'agent'))
+                ->whereHas('service', function($sq) use ($me) {
+                    $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                });
         }
-        // administrateur national : voit tout (pas de filtre)
+        // Administrateur : voit tous les utilisateurs sans restriction
 
         if ($request->has('search')) $query->search($request->search);
         if ($request->has('service_id')) $query->byService($request->service_id);
@@ -105,8 +99,8 @@ class UserController extends ApiController
         }
 
         $me = auth()->user();
-        // Administrateur avec portée limitée : ne peut créer des utilisateurs que dans sa région
-        if ($me->getRoleNames()->first() === 'administrateur' && $me->read_scope_type?->value !== 'national') {
+        // Gestionnaire : ne peut créer des agents que dans sa région
+        if ($me->getRoleNames()->first() === 'gestionnaire') {
             if ($request->filled('service_id')) {
                 $serviceRegion = \App\Models\Service::with('commune.departement')
                     ->find($request->service_id)?->commune?->departement?->region_id;

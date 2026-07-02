@@ -55,15 +55,11 @@ class TestUsersSeeder extends Seeder
 
     public function run(): void
     {
-        // ── 1. Administrateur national ────────────────────────────────────────
+        // ── 1. Administrateur ─────────────────────────────────────────────────
         $this->makeUser([
-            'name'             => 'Administrateur National',
-            'email'            => 'admin.national@gescrim.sn',
-            'telephone'        => '+221 77 100 00 00',
-            'read_scope_type'  => 'national',
-            'read_scope_id'    => null,
-            'write_scope_type' => 'national',
-            'write_scope_id'   => null,
+            'name'      => 'Administrateur National',
+            'email'     => 'admin.national@gescrim.sn',
+            'telephone' => '+221 77 100 00 00',
         ], 'administrateur');
 
         // ── 2. 14 Gestionnaires régionaux + agents par service ────────────────

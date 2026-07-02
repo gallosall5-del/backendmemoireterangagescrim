@@ -117,8 +117,8 @@ class NotificationController extends ApiController
         // Diffusions autorisées par rôle
         $isNational = $me->read_scope_type?->value === 'national';
         $allowedDiffusions = match (true) {
-            $currentRole === 'administrateur' && $isNational  => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
-            $currentRole === 'administrateur' && !$isNational => ['region', 'departement', 'commune', 'service', 'user', 'users'],
+            $currentRole === 'administrateur' => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
+            $currentRole === 'gestionnaire'   => ['region', 'departement', 'commune', 'service', 'user', 'users'],
             default => [],
         };
 
@@ -145,25 +145,11 @@ class NotificationController extends ApiController
             return $this->errorResponse('Vous ne pouvez pas envoyer une notification avec ce mode de diffusion.', 403);
         }
 
-        // Vérification territoriale : l'expéditeur ne peut cibler que sa zone ou en dessous
-        if ($writeScope !== 'national') {
+        // Gestionnaire : vérification territoriale (limité à sa région)
+        if ($currentRole === 'gestionnaire') {
             $error = $this->checkTerritorialTarget($diffusion, $targetId, $targetIds, $writeScope, $writeScopeId, $me);
             if ($error) {
                 return $this->errorResponse($error, 403);
-            }
-        }
-
-        // Administrateur portée service : ne peut notifier que son propre service/agents
-        if ($currentRole === 'administrateur' && $me->read_scope_type?->value === 'service') {
-            if ($diffusion === 'service' && (int)$targetId !== $me->service_id) {
-                return $this->errorResponse('Vous ne pouvez notifier que votre propre service.', 403);
-            }
-            if ($diffusion === 'users') {
-                $allowed = User::where('service_id', $me->service_id)->pluck('id')->toArray();
-                $forbidden = array_diff($targetIds, $allowed);
-                if (!empty($forbidden)) {
-                    return $this->errorResponse('Vous ne pouvez notifier que les agents de votre propre service.', 403);
-                }
             }
         }
 
