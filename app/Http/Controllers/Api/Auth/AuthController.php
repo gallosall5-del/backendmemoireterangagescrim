@@ -333,7 +333,7 @@ class AuthController extends ApiController
             'read_scope_id'    => $user->read_scope_id,
             'write_scope_type' => $user->write_scope_type?->value,
             'write_scope_id'   => $user->write_scope_id,
-            'roles'            => $user->getRoleNames(),
+            'roles'            => $user->getRoleNames()->map(fn($r) => ['administrateur' => 'admin'][$r] ?? $r)->values(),
             'permissions'      => $user->getAllPermissions()->pluck('name'),
             'personnel'        => $user->personnel,
         ]);
@@ -791,6 +791,7 @@ class AuthController extends ApiController
             'expires_in'   => $ttlSec,
             'device_id'    => $deviceId,
         ];
+        $roleMap = ['administrateur' => 'admin'];
         $responseData['user'] = [
             'id'               => $user->id,
             'name'             => $user->name,
@@ -802,7 +803,7 @@ class AuthController extends ApiController
             'write_scope_type' => $user->write_scope_type?->value,
             'write_scope_id'   => $user->write_scope_id,
             'is_2fa_enabled'   => $user->is_2fa_enabled,
-            'roles'            => $user->getRoleNames(),
+            'roles'            => $user->getRoleNames()->map(fn($r) => $roleMap[$r] ?? $r)->values(),
         ];
 
         $response = $this->successResponse($responseData, 'Connexion réussie.');
