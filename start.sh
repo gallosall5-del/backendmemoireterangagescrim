@@ -74,17 +74,17 @@ fi
 echo "--- clear OTP cooldown cache ---" >&2
 php /app/artisan cache:clear 2>&1 || echo "WARN: cache:clear failed" >&2
 
-echo "--- unlock all accounts (clear login_attempts) ---" >&2
-php /app/artisan tinker --execute="DB::table('login_attempts')->delete(); echo 'all login_attempts cleared';" 2>&1 || true
+echo "--- unlock expired login locks (>15 min only) ---" >&2
+php /app/artisan tinker --execute="DB::table('login_attempts')->where('attempted_at','<',now()->subMinutes(15))->delete(); echo 'expired login_attempts cleared';" 2>&1 || true
 
 echo "--- ensure test accounts exist with correct password ---" >&2
 php /app/artisan tinker --execute="
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 \$accounts = [
-    ['email' => 'admin@gescrim.sn',              'name' => 'Administrateur National',    'role' => 'administrateur', 'scope' => 'national', 'scope_id' => null, 'service_id' => null],
-    ['email' => 'gestionnaire.dakar@gescrim.sn', 'name' => 'Gestionnaire Région Dakar',  'role' => 'gestionnaire',   'scope' => 'region',   'scope_id' => 1,    'service_id' => null],
-    ['email' => 'agent@gescrim.sn',              'name' => 'Agent Terrain',               'role' => 'agent',          'scope' => 'service',  'scope_id' => 1,    'service_id' => 1],
+    ['email' => 'admin@gescrim.sn',       'name' => 'Administrateur National',         'role' => 'administrateur', 'scope' => 'national', 'scope_id' => null, 'service_id' => null],
+    ['email' => 'admin.dakar@gescrim.sn', 'name' => 'Administrateur Région Dakar',     'role' => 'administrateur', 'scope' => 'region',   'scope_id' => 1,    'service_id' => null],
+    ['email' => 'agent@gescrim.sn',       'name' => 'Agent Terrain',                   'role' => 'agent',          'scope' => 'service',  'scope_id' => 1,    'service_id' => 1],
 ];
 foreach (\$accounts as \$a) {
     \$u = User::firstOrCreate(['email' => \$a['email']], [

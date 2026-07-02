@@ -115,10 +115,11 @@ class NotificationController extends ApiController
         $writeScopeId = $me->write_scope_id;
 
         // Diffusions autorisées par rôle
-        $allowedDiffusions = match ($currentRole) {
-            'administrateur' => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
-            'gestionnaire'   => ['region', 'departement', 'commune', 'service', 'user', 'users'],
-            default          => [],
+        $isNational = $me->read_scope_type?->value === 'national';
+        $allowedDiffusions = match (true) {
+            $currentRole === 'administrateur' && $isNational  => ['global', 'role', 'region', 'departement', 'commune', 'service', 'user', 'users'],
+            $currentRole === 'administrateur' && !$isNational => ['region', 'departement', 'commune', 'service', 'user', 'users'],
+            default => [],
         };
 
         $validator = Validator::make($request->all(), [
@@ -152,8 +153,8 @@ class NotificationController extends ApiController
             }
         }
 
-        // Gestionnaire portée service : ne peut notifier que son propre service/agents
-        if ($currentRole === 'gestionnaire' && $me->read_scope_type === 'region') {
+        // Administrateur portée service : ne peut notifier que son propre service/agents
+        if ($currentRole === 'administrateur' && $me->read_scope_type?->value === 'service') {
             if ($diffusion === 'service' && (int)$targetId !== $me->service_id) {
                 return $this->errorResponse('Vous ne pouvez notifier que votre propre service.', 403);
             }

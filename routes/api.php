@@ -37,35 +37,6 @@ use App\Http\Controllers\Api\FullReportController;
 // ========== Health check Railway ==========
 Route::get('health', [\App\Http\Controllers\Api\HealthController::class, 'index']);
 
-// ========== Diagnostic mail temporaire (à supprimer après soutenance) ==========
-Route::get('debug-mail', function () {
-    try {
-        $recipient = 'sallgallo125@gmail.com';
-        \Illuminate\Support\Facades\Mail::to($recipient)->send(
-            new \App\Mail\OtpMail('123456', 'Test Diagnostic', 5)
-        );
-        return response()->json([
-            'status' => 'sent',
-            'to' => $recipient,
-            'mailer' => config('mail.default'),
-            'host' => config('mail.mailers.smtp.host'),
-            'port' => config('mail.mailers.smtp.port'),
-            'username' => config('mail.mailers.smtp.username'),
-            'from' => config('mail.from.address'),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status' => 'error',
-            'error' => $e->getMessage(),
-            'class' => get_class($e),
-            'mailer' => config('mail.default'),
-            'host' => config('mail.mailers.smtp.host'),
-            'port' => config('mail.mailers.smtp.port'),
-            'username' => config('mail.mailers.smtp.username'),
-            'from' => config('mail.from.address'),
-        ], 500);
-    }
-});
 
 
 

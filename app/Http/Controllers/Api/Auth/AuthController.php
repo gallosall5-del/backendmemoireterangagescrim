@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\ApiController;
 use App\Mail\PasswordResetMail;
 use App\Models\AuditLog;
 use App\Models\User;
-use App\Services\RecaptchaService;
 use App\Services\TwoFactorService;
 use App\Services\DeviceSessionService;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +26,6 @@ class AuthController extends ApiController
     private int $pwdResetExpiry = 10; // minutes
 
     public function __construct(
-        private RecaptchaService    $recaptcha,
         private TwoFactorService    $twoFactor,
         private DeviceSessionService $deviceSession,
     ) {
@@ -46,9 +44,8 @@ class AuthController extends ApiController
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'email'            => 'required|email',
-            'password'         => 'required|string|min:6',
-            'recaptcha_token'  => 'nullable|string',
+            'email'    => 'required|email',
+            'password' => 'required|string|min:6',
         ]);
 
         if ($validator->fails()) {
@@ -59,7 +56,6 @@ class AuthController extends ApiController
         $email = $request->email;
 
         $isMobileClient = $request->header('X-Mobile-Client') === 'flutter';
-        $captchaResult  = ['valid' => true, 'score' => 1.0];
 
         // ── Verrouillage (5 échecs en 15 min) ──
         $recentFailures = DB::table('login_attempts')
@@ -117,7 +113,7 @@ class AuthController extends ApiController
                 'new_values' => [
                     'email'         => $email,
                     'failures'      => $recentFailures + 1,
-                    'captcha_score' => $captchaResult['score'] ?? null,
+                    'captcha_score' => null,
                 ],
                 'ip_address' => $ip,
                 'user_agent' => $request->userAgent(),
@@ -185,7 +181,7 @@ class AuthController extends ApiController
                 'user_id'       => $user->id,
                 'device_id'     => $deviceId,
                 'ip'            => $ip,
-                'captcha_score' => $captchaResult['score'] ?? null,
+                'captcha_score' => null,
             ], now()->addMinutes(5));
 
             return $this->successResponse([
@@ -196,7 +192,7 @@ class AuthController extends ApiController
         }
 
         // ── Pas de 2FA : finaliser la connexion ──
-        return $this->finalizeLogin($user, $token, $request, $deviceId, $captchaResult['score'] ?? null);
+        return $this->finalizeLogin($user, $token, $request, $deviceId);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -271,7 +267,7 @@ class AuthController extends ApiController
             $token,
             $request,
             $ticketData['device_id'],
-            $ticketData['captcha_score'] ?? null,
+            null,
             true
         );
     }
@@ -355,8 +351,7 @@ class AuthController extends ApiController
     public function forgotPassword(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'email'           => 'required|email',
-            'recaptcha_token' => 'nullable|string',
+            'email' => 'required|email',
         ]);
 
         if ($validator->fails()) {
@@ -531,8 +526,8 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['administrateur', 'gestionnaire'])) {
-            return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
+        if (!$me->hasRole('administrateur')) {
+            return $this->errorResponse('Action réservée aux administrateurs.', 403);
         }
 
         $plainPassword = $this->generateSecurePassword();
@@ -711,12 +706,12 @@ class AuthController extends ApiController
     {
         $me = auth()->user();
 
-        if (!$me->hasRole(['administrateur', 'gestionnaire'])) {
-            return $this->errorResponse('Action réservée aux administrateurs et gestionnaires.', 403);
+        if (!$me->hasRole('administrateur')) {
+            return $this->errorResponse('Action réservée aux administrateurs.', 403);
         }
 
-        // Le gestionnaire ne peut débloquer que les comptes de sa région
-        if ($me->hasRole('gestionnaire')) {
+        // Administrateur avec portée limitée : ne peut débloquer que les comptes de sa zone
+        if ($me->read_scope_type?->value !== 'national') {
             $target->loadMissing('service.commune.departement');
             $targetRegion = $target->service?->commune?->departement?->region_id;
             if ($targetRegion !== $me->read_scope_id) {

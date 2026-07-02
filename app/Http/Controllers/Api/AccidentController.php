@@ -168,7 +168,7 @@ class AccidentController extends ApiController
         }
 
         $minutesSinceCreation = $accident->created_at->diffInMinutes(now());
-        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole(['administrateur', 'gestionnaire'])) {
+        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
             return $this->errorResponse(
                 'Modification interdite : le délai réglementaire de 60 minutes est dépassé.',
                 403
