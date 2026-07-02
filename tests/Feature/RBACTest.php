@@ -55,7 +55,6 @@ class RBACTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ], $headers);
 
         $token = $response->json('data.access_token');

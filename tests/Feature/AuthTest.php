@@ -44,7 +44,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'wrong_password',
-            'recaptcha_token' => '',
         ]);
         $response->assertStatus(401);
     }
@@ -54,7 +53,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['user', 'expires_in', 'device_id']]);
@@ -65,7 +63,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->agent->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
         $response->assertStatus(403);
         $response->assertJson(['code' => 'web_login_denied']);
@@ -76,7 +73,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->agent->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ], ['X-Mobile-Client' => 'flutter']);
 
         $response->assertStatus(200);
@@ -89,14 +85,12 @@ class AuthTest extends TestCase
             $this->postJson('/api/auth/login', [
                 'email' => $this->admin->email,
                 'password' => 'wrong',
-                'recaptcha_token' => '',
             ]);
         }
 
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
         $response->assertStatus(429);
     }
@@ -106,7 +100,6 @@ class AuthTest extends TestCase
         $loginResponse = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
 
         $token = $loginResponse->json('data.access_token') ?? '';
@@ -124,7 +117,6 @@ class AuthTest extends TestCase
         $loginResponse = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
 
         $token = $loginResponse->json('data.access_token') ?? '';
@@ -141,7 +133,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->admin->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ]);
 
         $response->assertStatus(200);
@@ -153,7 +144,6 @@ class AuthTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->agent->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ], ['X-Mobile-Client' => 'flutter']);
 
         $response->assertStatus(200);

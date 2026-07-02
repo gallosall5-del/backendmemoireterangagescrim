@@ -48,7 +48,6 @@ class SyncTest extends TestCase
         $loginResponse = $this->postJson('/api/auth/login', [
             'email' => $this->agent->email,
             'password' => 'password123',
-            'recaptcha_token' => '',
         ], ['X-Mobile-Client' => 'flutter']);
 
         $this->token = $loginResponse->json('data.access_token');
