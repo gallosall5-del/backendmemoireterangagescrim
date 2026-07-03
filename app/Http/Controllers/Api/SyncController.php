@@ -33,7 +33,6 @@ class SyncController extends ApiController
     public function batch(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $scopeService = app(\App\Services\ScopeAccessService::class);
 
         $results = [
             'synced_infractions'      => [],
@@ -52,17 +51,6 @@ class SyncController extends ApiController
                 $data = Arr::only($data, array_merge($infractionFields, ['victimes']));
                 if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
                 if (empty($data['service_id'])) { $results['errors'][] = 'Infraction ignorée : service_id manquant'; continue; }
-                if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
-                    \App\Models\AuditLog::create([
-                        'user_id'    => $user->id,
-                        'action'     => 'sync_violation',
-                        'model_type' => Infraction::class,
-                        'new_values' => ['commune_id' => $data['commune_id']],
-                        'ip_address' => $request->ip(),
-                    ]);
-                    $results['errors'][] = 'Accès territorial refusé (infraction commune ' . $data['commune_id'] . ')';
-                    continue;
-                }
                 if (empty($data['type_infraction_id'])) { $results['errors'][] = 'Infraction ignorée : type_infraction_id manquant'; continue; }
                 if (empty($data['commune_id'])) { $results['errors'][] = 'Infraction ignorée : commune_id manquant'; continue; }
                 $localId = $data['local_id'] ?? null;
@@ -94,17 +82,6 @@ class SyncController extends ApiController
                 $data = Arr::only($data, array_merge($accidentFields, ['victimes']));
                 if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
                 if (empty($data['service_id'])) { $results['errors'][] = 'Accident ignoré : service_id manquant'; continue; }
-                if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
-                    \App\Models\AuditLog::create([
-                        'user_id'    => $user->id,
-                        'action'     => 'sync_violation',
-                        'model_type' => Accident::class,
-                        'new_values' => ['commune_id' => $data['commune_id']],
-                        'ip_address' => $request->ip(),
-                    ]);
-                    $results['errors'][] = 'Accès territorial refusé (accident commune ' . $data['commune_id'] . ')';
-                    continue;
-                }
                 $localId = $data['local_id'] ?? null;
                 $victimesData = $data['victimes'] ?? [];
                 $data['user_id']     = $user->id;
@@ -131,17 +108,7 @@ class SyncController extends ApiController
             $amendeFields = ['type', 'date', 'heure', 'lieu', 'commune_id', 'service_id', 'montant', 'description', 'plaque_immatriculation', 'local_id'];
             foreach ($request->input('amendes', []) as $data) {
                 $data = Arr::only($data, $amendeFields);
-                if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
-                    \App\Models\AuditLog::create([
-                        'user_id'    => $user->id,
-                        'action'     => 'sync_violation',
-                        'model_type' => AmendePieceSaisie::class,
-                        'new_values' => ['commune_id' => $data['commune_id']],
-                        'ip_address' => $request->ip(),
-                    ]);
-                    $results['errors'][] = 'Accès territorial refusé (amende commune ' . $data['commune_id'] . ')';
-                    continue;
-                }
+                if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = AmendePieceSaisie::updateOrCreate(
@@ -175,17 +142,8 @@ class SyncController extends ApiController
             $serviceRemFields = ['date', 'heure', 'libelle', 'montant', 'service_id', 'commune_id', 'description', 'local_id'];
             foreach ($request->input('services_remuneres', []) as $data) {
                 $data = Arr::only($data, $serviceRemFields);
-                if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
-                    \App\Models\AuditLog::create([
-                        'user_id'    => $user->id,
-                        'action'     => 'sync_violation',
-                        'model_type' => ServiceRemunere::class,
-                        'new_values' => ['commune_id' => $data['commune_id']],
-                        'ip_address' => $request->ip(),
-                    ]);
-                    $results['errors'][] = 'Accès territorial refusé (service rémunéré commune ' . $data['commune_id'] . ')';
-                    continue;
-                }
+                if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
+                if (empty($data['service_id'])) { $results['errors'][] = 'Service ignoré : service_id manquant'; continue; }
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = ServiceRemunere::updateOrCreate(
