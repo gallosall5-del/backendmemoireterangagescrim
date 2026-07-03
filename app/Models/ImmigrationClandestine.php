@@ -25,7 +25,7 @@ class ImmigrationClandestine extends Model
         'nombre_senegalais', 'nombre_etrangers',
         'zone_depart', 'zone_depart_lat', 'zone_depart_lng',
         'zone_arrivee_prevue', 'zone_arrivee_lat', 'zone_arrivee_lng',
-        'user_id',
+        'user_id', 'sync_status',
     ];
 
     protected function casts(): array

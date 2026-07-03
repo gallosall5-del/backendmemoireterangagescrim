@@ -66,6 +66,7 @@ class SyncController extends ApiController
                 if (empty($data['type_infraction_id'])) { $results['errors'][] = 'Infraction ignorée : type_infraction_id manquant'; continue; }
                 if (empty($data['commune_id'])) { $results['errors'][] = 'Infraction ignorée : commune_id manquant'; continue; }
                 $localId = $data['local_id'] ?? null;
+                $victimesData = $data['victimes'] ?? [];
                 $data['user_id']     = $user->id;
                 $data['sync_status'] = 'synced';
                 $data['annee']       = date('Y', strtotime($data['date'] ?? now()));
@@ -79,7 +80,7 @@ class SyncController extends ApiController
                 // Victimes liées : isolation via savepoint pour éviter la race condition delete/insert
                 DB::statement('SAVEPOINT sp_victimes_inf_' . $record->id);
                 Victime::where('infraction_id', $record->id)->delete();
-                foreach ($data['victimes'] ?? [] as $v) {
+                foreach ($victimesData as $v) {
                     $v['infraction_id'] = $record->id;
                     unset($v['accident_id'], $v['local_id'], $v['parent_local_id'], $v['parent_type'], $v['sync_status']);
                     Victime::create($v);
@@ -105,6 +106,7 @@ class SyncController extends ApiController
                     continue;
                 }
                 $localId = $data['local_id'] ?? null;
+                $victimesData = $data['victimes'] ?? [];
                 $data['user_id']     = $user->id;
                 $data['sync_status'] = 'synced';
                 unset($data['victimes']);
@@ -117,7 +119,7 @@ class SyncController extends ApiController
                 // Victimes liées : isolation via savepoint pour éviter la race condition delete/insert
                 DB::statement('SAVEPOINT sp_victimes_acc_' . $record->id);
                 Victime::where('accident_id', $record->id)->delete();
-                foreach ($data['victimes'] ?? [] as $v) {
+                foreach ($victimesData as $v) {
                     $v['accident_id'] = $record->id;
                     unset($v['infraction_id'], $v['local_id'], $v['parent_local_id'], $v['parent_type'], $v['sync_status']);
                     Victime::create($v);

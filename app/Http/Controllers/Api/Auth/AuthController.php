@@ -39,7 +39,12 @@ class AuthController extends ApiController
     #[OA\Post(
         path: "/api/auth/login",
         summary: "Connexion utilisateur (étape 1)",
-        tags: ["Authentification"]
+        tags: ["Authentification"],
+        responses: [
+            new OA\Response(response: 200, description: "Succès"),
+            new OA\Response(response: 401, description: "Identifiants incorrects"),
+            new OA\Response(response: 422, description: "Erreur de validation"),
+        ]
     )]
     public function login(Request $request): JsonResponse
     {
@@ -779,11 +784,22 @@ class AuthController extends ApiController
     protected function respondWithToken(string $token, ?User $userModel = null, ?string $deviceId = null): JsonResponse
     {
         $user   = $userModel ?? auth()->user();
-        $ttlSec = config('jwt.ttl') * 60;
 
         $user->load('service');
 
         $isMobile = request()->header('X-Mobile-Client') === 'flutter';
+
+        // Mobile : token longue durée (30 jours) pour éviter les déconnexions automatiques.
+        // Le mobile ne doit déconnecter l'utilisateur que sur action explicite (bouton déconnexion).
+        if ($isMobile && $user) {
+            $mobileTtl = 60 * 24 * 30; // 30 jours en minutes
+            // Override le TTL pour ce token spécifique
+            JWTAuth::factory()->setTTL($mobileTtl);
+            $token = JWTAuth::claims(['mob' => true])->fromUser($user);
+            $ttlSec = $mobileTtl * 60;
+        } else {
+            $ttlSec = config('jwt.ttl') * 60;
+        }
 
         $responseData = [
             'access_token' => $token,

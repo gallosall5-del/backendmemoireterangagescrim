@@ -284,74 +284,11 @@
                 "tags": [
                     "Authentification"
                 ],
-                "summary": "Connexion utilisateur",
-                "description": "Authentifie l'utilisateur et retourne un token JWT",
+                "summary": "Connexion utilisateur (étape 1)",
                 "operationId": "be2e78e5f93182d4403f839cc516d312",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "email",
-                                    "password"
-                                ],
-                                "properties": {
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email",
-                                        "example": "admin@gescrim.sn"
-                                    },
-                                    "password": {
-                                        "type": "string",
-                                        "format": "password",
-                                        "example": "password123"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
-                        "description": "Connexion réussie",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Connexion réussie."
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "access_token": {
-                                                    "type": "string"
-                                                },
-                                                "token_type": {
-                                                    "type": "string",
-                                                    "example": "bearer"
-                                                },
-                                                "expires_in": {
-                                                    "type": "integer",
-                                                    "example": 3600
-                                                },
-                                                "user": {
-                                                    "type": "object"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Succès"
                     },
                     "401": {
                         "description": "Identifiants incorrects"
@@ -360,114 +297,6 @@
                         "description": "Erreur de validation"
                     }
                 }
-            }
-        },
-        "/api/auth/logout": {
-            "post": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Déconnexion",
-                "operationId": "0b366af9c6842623aab9c8827c519b89",
-                "responses": {
-                    "200": {
-                        "description": "Déconnexion réussie",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Non authentifié",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/auth/refresh": {
-            "post": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Rafraîchir le token JWT",
-                "operationId": "1a1e54a850ca4218b0388d92093ab652",
-                "responses": {
-                    "200": {
-                        "description": "Token rafraîchi",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token invalide",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/auth/me": {
-            "get": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Profil de l'utilisateur connecté",
-                "operationId": "4f405e33417b7b74565767c1a7b51231",
-                "responses": {
-                    "200": {
-                        "description": "Profil retourné",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Non authentifié",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
             }
         },
         "/api/dashboard/stats": {
@@ -652,21 +481,39 @@
                 ]
             }
         },
-        "/api/export/infractions/pdf": {
+        "/api/dashboard/saisies-par-heure": {
             "get": {
                 "tags": [
-                    "Export"
+                    "Dashboard"
                 ],
-                "summary": "Export PDF des infractions",
-                "operationId": "36d21e984e843b5fb50f0b76510685fb",
+                "summary": "Distribution des saisies par heure de la journée",
+                "description": "Retourne pour chaque heure (0-23) le nombre de saisies enregistrées via created_at et via le champ heure. Utile pour identifier les pics d'activité terrain.",
+                "operationId": "0d52e0671d2ee8f2f239ade6f5bc95b9",
                 "parameters": [
                     {
                         "name": "annee",
                         "in": "query",
                         "required": false,
                         "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mois",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
                             "type": "integer",
-                            "example": 2025
+                            "maximum": 12,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "region_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
                         }
                     },
                     {
@@ -676,154 +523,11 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "name": "date_from",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "date_to",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Fichier PDF téléchargé",
-                        "content": {
-                            "application/pdf": {}
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/export/accidents/pdf": {
-            "get": {
-                "tags": [
-                    "Export"
-                ],
-                "summary": "Export PDF des accidents",
-                "operationId": "dd2f177f6b3e5d4710ad4de6a7460b1f",
-                "parameters": [
-                    {
-                        "name": "type",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "matériel",
-                                "corporel",
-                                "mortel"
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Fichier PDF téléchargé",
-                        "content": {
-                            "application/pdf": {}
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/export/infractions/csv": {
-            "get": {
-                "tags": [
-                    "Export"
-                ],
-                "summary": "Export CSV des infractions (compatible Excel)",
-                "operationId": "6062cc6417a9aabd5e7256c60768170f",
-                "parameters": [
-                    {
-                        "name": "annee",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Fichier CSV téléchargé",
-                        "content": {
-                            "text/csv": {}
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/export/import/json": {
-            "post": {
-                "tags": [
-                    "Export"
-                ],
-                "summary": "Importer des données depuis un fichier JSON",
-                "operationId": "ddc07150b6b349c06ab314f3026cea9d",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "properties": {
-                                    "file": {
-                                        "description": "Fichier JSON max 10MB",
-                                        "type": "string",
-                                        "format": "binary"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Import réussi",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SuccessResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Fichier invalide",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
+                        "description": "Distribution horaire retournée"
                     }
                 },
                 "security": [
@@ -1486,60 +1190,10 @@
                     "Synchronisation"
                 ],
                 "summary": "Synchroniser les données offline par lot",
-                "description": "Envoie en une seule requête toutes les infractions et accidents saisis en mode hors-ligne.",
                 "operationId": "17b478c48719a9159824836a063841b9",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "infractions": {
-                                        "type": "array",
-                                        "items": {
-                                            "$ref": "#/components/schemas/Infraction"
-                                        }
-                                    },
-                                    "accidents": {
-                                        "type": "array",
-                                        "items": {
-                                            "$ref": "#/components/schemas/Accident"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
-                        "description": "Synchronisation réussie",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "infractions_synced": {
-                                            "type": "integer"
-                                        },
-                                        "accidents_synced": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Erreur de validation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
+                        "description": "Synchronisation réussie"
                     }
                 },
                 "security": [
@@ -1555,7 +1209,6 @@
                     "Synchronisation"
                 ],
                 "summary": "État de synchronisation",
-                "description": "Retourne le nombre d'éléments en attente et synchonisés.",
                 "operationId": "7bd5ab03d3512ac159a2922b6e67f5af",
                 "responses": {
                     "200": {
@@ -1824,10 +1477,6 @@
         {
             "name": "Dashboard",
             "description": "Statistiques et KPIs"
-        },
-        {
-            "name": "Export",
-            "description": "Export et Import"
         },
         {
             "name": "Synchronisation",

@@ -167,10 +167,10 @@ class AccidentController extends ApiController
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
 
-        $minutesSinceCreation = $accident->created_at->diffInMinutes(now());
-        if ($minutesSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
+        $secondsSinceCreation = $accident->created_at->diffInSeconds(now());
+        if ($secondsSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
             return $this->errorResponse(
-                'Modification interdite : le délai réglementaire de 60 minutes est dépassé.',
+                'Modification interdite : le délai réglementaire de 1 minute est dépassé.',
                 403
             );
         }
