@@ -78,6 +78,33 @@ class ScopeAccessService
     }
 
     /**
+     * Vérifie qu'un agent peut synchroniser un incident dans une commune donnée.
+     * Règle : l'incident doit être dans la même région que le service de l'agent.
+     * Un agent patrouille dans plusieurs communes de sa région — pas au-delà.
+     */
+    public function canSyncInCommune(User $user, int $communeId): bool
+    {
+        if ($user->write_scope_type === ScopeType::NATIONAL) {
+            return true;
+        }
+
+        // Résoudre la région de l'agent via son service
+        $agentService = $user->service_id ? Service::find($user->service_id) : null;
+        if (!$agentService || !$agentService->commune_id) {
+            return true; // service sans commune configurée → ne pas bloquer
+        }
+        $agentCommune = Commune::with('departement.region')->find($agentService->commune_id);
+        if (!$agentCommune || !$agentCommune->departement) return true;
+        $agentRegionId = $agentCommune->departement->region_id;
+
+        // Vérifier que la commune de l'incident est dans la même région
+        $incidentCommune = Commune::with('departement')->find($communeId);
+        if (!$incidentCommune || !$incidentCommune->departement) return true;
+
+        return $incidentCommune->departement->region_id === $agentRegionId;
+    }
+
+    /**
      * Vérifie l'accès à un service spécifique.
      */
     public function canAccessService(User $user, int $serviceId, string $action = 'write'): bool
