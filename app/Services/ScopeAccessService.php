@@ -97,8 +97,17 @@ class ScopeAccessService
      */
     protected function checkTerritorialAccess(ScopeType $scopeType, ?int $scopeId, ?int $communeId, ?int $serviceId): bool
     {
-        if ($scopeType === ScopeType::SERVICE && $serviceId) {
-            return $scopeId === $serviceId;
+        if ($scopeType === ScopeType::SERVICE) {
+            // Accès direct via serviceId
+            if ($serviceId) {
+                return $scopeId === $serviceId;
+            }
+            // Accès via communeId : vérifier que le service de l'agent appartient à cette commune
+            if ($communeId) {
+                $service = Service::find($scopeId);
+                return $service && $service->commune_id === $communeId;
+            }
+            return false;
         }
 
         // Résoudre la commune si on n'a que le service

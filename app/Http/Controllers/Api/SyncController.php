@@ -128,7 +128,7 @@ class SyncController extends ApiController
             }
 
             // ── Amendes ──
-            $amendeFields = ['date', 'lieu', 'commune_id', 'service_id', 'montant', 'description', 'plaque_immatriculation', 'local_id'];
+            $amendeFields = ['type', 'date', 'heure', 'lieu', 'commune_id', 'service_id', 'montant', 'description', 'plaque_immatriculation', 'local_id'];
             foreach ($request->input('amendes', []) as $data) {
                 $data = Arr::only($data, $amendeFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
@@ -172,7 +172,7 @@ class SyncController extends ApiController
             }
 
             // ── Services rémunérés ──
-            $serviceRemFields = ['date', 'libelle', 'montant', 'service_id', 'commune_id', 'description', 'local_id'];
+            $serviceRemFields = ['date', 'heure', 'libelle', 'montant', 'service_id', 'commune_id', 'description', 'local_id'];
             foreach ($request->input('services_remuneres', []) as $data) {
                 $data = Arr::only($data, $serviceRemFields);
                 if (isset($data['commune_id']) && !$scopeService->canAccessCommune($user, $data['commune_id'], 'write')) {
