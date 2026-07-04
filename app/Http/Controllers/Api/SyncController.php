@@ -33,7 +33,6 @@ class SyncController extends ApiController
     public function batch(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $scopeService = app(\App\Services\ScopeAccessService::class);
 
         $results = [
             'synced_infractions'      => [],
@@ -52,10 +51,6 @@ class SyncController extends ApiController
                 $data = Arr::only($data, array_merge($infractionFields, ['victimes']));
                 if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
                 if (empty($data['service_id'])) { $results['errors'][] = 'Infraction ignorée : service_id manquant'; continue; }
-                if (!empty($data['commune_id']) && !$scopeService->canSyncInCommune($user, (int)$data['commune_id'])) {
-                    $results['errors'][] = 'Infraction ignorée : commune hors région de l\'agent';
-                    continue;
-                }
                 if (empty($data['type_infraction_id'])) { $results['errors'][] = 'Infraction ignorée : type_infraction_id manquant'; continue; }
                 if (empty($data['commune_id'])) { $results['errors'][] = 'Infraction ignorée : commune_id manquant'; continue; }
                 $localId = $data['local_id'] ?? null;
@@ -87,10 +82,6 @@ class SyncController extends ApiController
                 $data = Arr::only($data, array_merge($accidentFields, ['victimes']));
                 if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
                 if (empty($data['service_id'])) { $results['errors'][] = 'Accident ignoré : service_id manquant'; continue; }
-                if (!empty($data['commune_id']) && !$scopeService->canSyncInCommune($user, (int)$data['commune_id'])) {
-                    $results['errors'][] = 'Accident ignoré : commune hors région de l\'agent';
-                    continue;
-                }
                 $localId = $data['local_id'] ?? null;
                 $victimesData = $data['victimes'] ?? [];
                 $data['user_id']     = $user->id;
@@ -118,10 +109,6 @@ class SyncController extends ApiController
             foreach ($request->input('amendes', []) as $data) {
                 $data = Arr::only($data, $amendeFields);
                 if (empty($data['service_id'])) $data['service_id'] = $user->service_id;
-                if (!empty($data['commune_id']) && !$scopeService->canSyncInCommune($user, (int)$data['commune_id'])) {
-                    $results['errors'][] = 'Amende ignorée : commune hors région de l\'agent';
-                    continue;
-                }
                 $localId = $data['local_id'] ?? null;
                 $data['user_id'] = $user->id;
                 $record = AmendePieceSaisie::updateOrCreate(

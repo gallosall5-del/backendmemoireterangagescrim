@@ -3,7 +3,7 @@
 Lire d'abord le fichier de référence commun aux trois projets :
 `/home/genius/Documents/memoire fin d'annee/CLAUDE.md`
 
-Ce fichier contient l'architecture globale, les règles de sécurité critiques (2FA, reCAPTCHA, device tracking, RBAC, portée territoriale) et les conventions à respecter obligatoirement.
+Ce fichier contient l'architecture globale, les règles de sécurité critiques (2FA, device tracking, RBAC, portée territoriale) et les conventions à respecter obligatoirement.
 
 ---
 

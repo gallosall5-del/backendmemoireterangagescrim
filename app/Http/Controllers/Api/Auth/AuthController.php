@@ -33,7 +33,7 @@ class AuthController extends ApiController
     }
 
     // ──────────────────────────────────────────────────────────────
-    // LOGIN — Étape 1 : identifiants + reCAPTCHA
+    // LOGIN — Étape 1 : identifiants
     // ──────────────────────────────────────────────────────────────
 
     #[OA\Post(
@@ -350,7 +350,7 @@ class AuthController extends ApiController
 
     /**
      * POST /api/auth/forgot-password
-     * Vérifie reCAPTCHA, retrouve le compte et envoie un OTP de réinitialisation.
+     * Retrouve le compte et envoie un OTP de réinitialisation.
      * Répond toujours avec un message neutre pour ne pas divulguer si l'email existe.
      */
     public function forgotPassword(Request $request): JsonResponse
