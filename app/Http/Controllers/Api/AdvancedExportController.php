@@ -6,6 +6,9 @@ use App\Models\Accident;
 use App\Models\Infraction;
 use App\Models\ImmigrationClandestine;
 use App\Models\AmendePieceSaisie;
+use App\Models\Personnel;
+use App\Models\Victime;
+use App\Models\ServiceRemunere;
 use App\Models\AuditLog;
 use App\Services\Export\DateFilterService;
 use App\Services\Export\PDFExportService;
@@ -41,9 +44,9 @@ class AdvancedExportController extends ApiController
         [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
         $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
 
-        $query = Accident::with(['service', 'commune', 'victimes'])->visibleByUser();
+        $query = Accident::with(['service', 'commune.departement.region', 'victimes'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
-        $accidents = $query->orderByDesc('date')->orderByDesc('created_at')->get();
+        $accidents = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('accidents', $request->format, $periodLabel, $accidents->count());
 
@@ -56,46 +59,13 @@ class AdvancedExportController extends ApiController
                 'period_label'   => $periodLabel,
             ], 'accidents'),
 
-            'excel' => $this->excelService->download(
-                'Rapport des Accidents de Circulation',
+            'excel' => $this->excelService->downloadAnaserAccidents(
+                $accidents,
                 $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Heure', 'Type', 'Lieu', 'Commune', 'Service', 'Moyen', 'Cause', 'Victimes'],
-                $accidents->map(fn($a, $i) => [
-                    $i + 1,
-                    $a->date?->format('d/m/Y') ?? '-',
-                    $a->heure ?? '-',
-                    $a->type ?? '-',
-                    $a->lieu ?? '-',
-                    $a->commune->nom ?? '-',
-                    $a->service->nom ?? '-',
-                    $a->moyen ?? '-',
-                    $a->cause_probable ?? '-',
-                    $a->victimes->count(),
-                ])->values()->all(),
-                ['TOTAUX', '', '', '', '', '', '', '', '', $accidents->sum(fn($a) => $a->victimes->count())],
-                'accidents'
+                Auth::user()?->name ?? 'Inconnu'
             ),
 
-            'word' => $this->wordService->download(
-                'Rapport des Accidents de Circulation',
-                $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Heure', 'Type', 'Lieu', 'Commune', 'Service', 'Moyen', 'Cause', 'Victimes'],
-                $accidents->map(fn($a, $i) => [
-                    $i + 1,
-                    $a->date?->format('d/m/Y') ?? '-',
-                    $a->heure ?? '-',
-                    $a->type ?? '-',
-                    $a->lieu ?? '-',
-                    $a->commune->nom ?? '-',
-                    $a->service->nom ?? '-',
-                    $a->moyen ?? '-',
-                    $a->cause_probable ?? '-',
-                    $a->victimes->count(),
-                ])->values()->all(),
-                'accidents'
-            ),
+            'word' => $this->wordService->downloadAccidents($accidents, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
         };
     }
 
@@ -117,9 +87,9 @@ class AdvancedExportController extends ApiController
         [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
         $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
 
-        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune'])->visibleByUser();
+        $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune.departement.region'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
-        $infractions = $query->orderByDesc('date')->orderByDesc('created_at')->get();
+        $infractions = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('infractions', $request->format, $periodLabel, $infractions->count());
 
@@ -132,45 +102,13 @@ class AdvancedExportController extends ApiController
                 'period_label'   => $periodLabel,
             ], 'infractions'),
 
-            'excel' => $this->excelService->download(
-                'Rapport des Infractions',
+            'excel' => $this->excelService->downloadAnaserInfractions(
+                $infractions,
                 $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Heure', 'Lieu', 'Commune', 'Service', 'Type', 'Catégorie', 'Issue', 'Description'],
-                $infractions->map(fn($inf, $i) => [
-                    $i + 1,
-                    $inf->date?->format('d/m/Y') ?? ($inf->annee ?? '-'),
-                    $inf->heure ?? '-',
-                    $inf->lieu ?? '-',
-                    $inf->commune->nom ?? '-',
-                    $inf->service->nom ?? '-',
-                    $inf->typeInfraction->nom ?? '-',
-                    $inf->typeInfraction->categorieInfraction->nom ?? '-',
-                    $inf->issue ?? '-',
-                    $inf->description ?? '-',
-                ])->values()->all(),
-                ['TOTAUX', '', '', '', '', '', '', '', '', $infractions->count()],
-                'infractions'
+                Auth::user()?->name ?? 'Inconnu'
             ),
 
-            'word' => $this->wordService->download(
-                'Rapport des Infractions',
-                $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Heure', 'Lieu', 'Commune', 'Service', 'Type', 'Catégorie', 'Issue'],
-                $infractions->map(fn($inf, $i) => [
-                    $i + 1,
-                    $inf->date?->format('d/m/Y') ?? ($inf->annee ?? '-'),
-                    $inf->heure ?? '-',
-                    $inf->lieu ?? '-',
-                    $inf->commune->nom ?? '-',
-                    $inf->service->nom ?? '-',
-                    $inf->typeInfraction->nom ?? '-',
-                    $inf->typeInfraction->categorieInfraction->nom ?? '-',
-                    $inf->issue ?? '-',
-                ])->values()->all(),
-                'infractions'
-            ),
+            'word' => $this->wordService->downloadInfractions($infractions, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
         };
     }
 
@@ -192,9 +130,9 @@ class AdvancedExportController extends ApiController
         [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
         $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
 
-        $query = ImmigrationClandestine::with(['service', 'user'])->visibleByUser();
+        $query = ImmigrationClandestine::with(['service'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
-        $records = $query->orderByDesc('date')->orderByDesc('created_at')->get();
+        $records = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('immigrations', $request->format, $periodLabel, $records->count());
 
@@ -207,46 +145,13 @@ class AdvancedExportController extends ApiController
                 'period_label'   => $periodLabel,
             ], 'immigrations'),
 
-            'excel' => $this->excelService->download(
-                'Rapport des Immigrations Clandestines',
+            'excel' => $this->excelService->downloadAnaserImmigrations(
+                $records,
                 $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Service', 'Total', 'Hommes', 'Femmes', 'Enfants', 'Sénégalais', 'Étrangers', 'Zone départ', 'Zone arrivée'],
-                $records->map(fn($r, $i) => [
-                    $i + 1,
-                    $r->date?->format('d/m/Y') ?? '-',
-                    $r->service->nom ?? '-',
-                    $r->nombre_interpellation ?? 0,
-                    $r->nombre_hommes ?? 0,
-                    $r->nombre_femmes ?? 0,
-                    $r->nombre_enfants ?? 0,
-                    $r->nombre_senegalais ?? 0,
-                    $r->nombre_etrangers ?? 0,
-                    $r->zone_depart ?? '-',
-                    $r->zone_arrivee_prevue ?? '-',
-                ])->values()->all(),
-                ['TOTAUX', '', '', $records->sum('nombre_interpellation'), $records->sum('nombre_hommes'), $records->sum('nombre_femmes'), $records->sum('nombre_enfants'), $records->sum('nombre_senegalais'), $records->sum('nombre_etrangers'), '', ''],
-                'immigrations'
+                Auth::user()?->name ?? 'Inconnu'
             ),
 
-            'word' => $this->wordService->download(
-                'Rapport des Immigrations Clandestines',
-                $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Service', 'Total', 'Hommes', 'Femmes', 'Enfants', 'Zone départ', 'Zone arrivée'],
-                $records->map(fn($r, $i) => [
-                    $i + 1,
-                    $r->date?->format('d/m/Y') ?? '-',
-                    $r->service->nom ?? '-',
-                    $r->nombre_interpellation ?? '-',
-                    $r->nombre_hommes ?? 0,
-                    $r->nombre_femmes ?? 0,
-                    $r->nombre_enfants ?? 0,
-                    $r->zone_depart ?? '-',
-                    $r->zone_arrivee_prevue ?? '-',
-                ])->values()->all(),
-                'immigrations'
-            ),
+            'word' => $this->wordService->downloadImmigrations($records, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
         };
     }
 
@@ -267,9 +172,9 @@ class AdvancedExportController extends ApiController
         [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
         $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
 
-        $query = AmendePieceSaisie::with(['service', 'user'])->visibleByUser();
+        $query = AmendePieceSaisie::with(['service', 'commune.departement.region'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
-        $records = $query->orderByDesc('date')->orderByDesc('created_at')->get();
+        $records = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('amendes', $request->format, $periodLabel, $records->count());
 
@@ -282,38 +187,147 @@ class AdvancedExportController extends ApiController
                 'period_label'   => $periodLabel,
             ], 'amendes'),
 
-            'excel' => $this->excelService->download(
-                'Rapport des Amendes & Pièces Saisies',
+            'excel' => $this->excelService->downloadAnaserAmendes(
+                $records,
                 $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Type', 'Service', 'Montant (FCFA)', 'Description'],
-                $records->map(fn($r, $i) => [
-                    $i + 1,
-                    $r->date?->format('d/m/Y') ?? '-',
-                    $r->type ?? '-',
-                    $r->service->nom ?? '-',
-                    $r->montant ?? 0,
-                    $r->description ?? '-',
-                ])->values()->all(),
-                ['TOTAL', '', '', '', $records->sum('montant'), ''],
-                'amendes'
+                Auth::user()?->name ?? 'Inconnu'
             ),
 
-            'word' => $this->wordService->download(
-                'Rapport des Amendes & Pièces Saisies',
+            'word' => $this->wordService->downloadAmendes($records, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
+        };
+    }
+
+    // POST /api/personnels/export
+    public function personnels(Request $request)
+    {
+        $request->validate([
+            'format'     => 'required|in:pdf,word,excel',
+            'periodType' => 'required|string',
+            'month'      => 'nullable|integer|min:1|max:12',
+            'year'       => 'nullable|integer|min:2000|max:2100',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+        if (!$this->checkExportPermission($request->format)) {
+            return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
+        }
+
+        [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
+        $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
+
+        $query = Personnel::with(['service.commune.departement.region'])->visibleByUser();
+        if ($from) $query->where('date_entree_corps', '>=', $from);
+        if ($to)   $query->where('date_entree_corps', '<=', $to);
+        $records = $query->orderBy('nom')->get();
+
+        $this->logExport('personnels', $request->format, $periodLabel, $records->count());
+
+        return match ($request->format) {
+            'pdf'   => $this->pdfService->generate('exports.advanced.personnels', [
+                'records'        => $records,
+                'titre'          => 'Rapport du Personnel DSP',
+                'date_generation'=> now()->format('d/m/Y H:i'),
+                'agent'          => Auth::user()?->name ?? 'Inconnu',
+                'period_label'   => $periodLabel,
+            ], 'personnels'),
+
+            'excel' => $this->excelService->downloadAnaserPersonnel(
+                $records,
                 $periodLabel,
-                Auth::user()?->name ?? 'Inconnu',
-                ['#', 'Date', 'Type', 'Service', 'Montant (FCFA)', 'Description'],
-                $records->map(fn($r, $i) => [
-                    $i + 1,
-                    $r->date?->format('d/m/Y') ?? '-',
-                    $r->type ?? '-',
-                    $r->service->nom ?? '-',
-                    $r->montant ?? 0,
-                    $r->description ?? '-',
-                ])->values()->all(),
-                'amendes'
+                Auth::user()?->name ?? 'Inconnu'
             ),
+
+            'word' => $this->wordService->downloadPersonnels($records, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
+        };
+    }
+
+    // POST /api/victimes/export
+    public function victimes(Request $request)
+    {
+        $request->validate([
+            'format'     => 'required|in:pdf,word,excel',
+            'periodType' => 'required|string',
+            'month'      => 'nullable|integer|min:1|max:12',
+            'year'       => 'nullable|integer|min:2000|max:2100',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+        if (!$this->checkExportPermission($request->format)) {
+            return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
+        }
+
+        [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
+        $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
+
+        $query = Victime::with([
+            'accident.commune.departement.region',
+            'infraction.commune.departement.region',
+        ])->visibleByUser();
+        if ($from) $query->whereHas('accident', fn($q) => $q->where('date', '>=', $from))
+            ->orWhereHas('infraction', fn($q) => $q->where('date', '>=', $from));
+        $records = $query->orderBy('created_at')->get();
+
+        $this->logExport('victimes', $request->format, $periodLabel, $records->count());
+
+        return match ($request->format) {
+            'pdf'   => $this->pdfService->generate('exports.advanced.victimes', [
+                'records'        => $records,
+                'titre'          => 'Rapport des Victimes et Impliqués',
+                'date_generation'=> now()->format('d/m/Y H:i'),
+                'agent'          => Auth::user()?->name ?? 'Inconnu',
+                'period_label'   => $periodLabel,
+            ], 'victimes'),
+
+            'excel' => $this->excelService->downloadAnaserVictimes(
+                $records,
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu'
+            ),
+
+            'word' => $this->wordService->downloadVictimes($records, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
+        };
+    }
+
+    // POST /api/services-remuneres/export
+    public function servicesRemuneres(Request $request)
+    {
+        $request->validate([
+            'format'     => 'required|in:pdf,word,excel',
+            'periodType' => 'required|string',
+            'month'      => 'nullable|integer|min:1|max:12',
+            'year'       => 'nullable|integer|min:2000|max:2100',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+        if (!$this->checkExportPermission($request->format)) {
+            return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
+        }
+
+        [$from, $to] = $this->dateFilter->resolve($request->periodType, $request->all());
+        $periodLabel  = $this->dateFilter->label($request->periodType, $request->all());
+
+        $query = ServiceRemunere::with(['service', 'commune.departement.region'])->visibleByUser();
+        $this->applyDateRange($query, $from, $to);
+        $records = $query->orderBy('date')->orderBy('created_at')->get();
+
+        $this->logExport('services_remuneres', $request->format, $periodLabel, $records->count());
+
+        return match ($request->format) {
+            'pdf'   => $this->pdfService->generate('exports.advanced.services_remuneres', [
+                'records'        => $records,
+                'titre'          => 'Rapport des Services Rémunérés',
+                'date_generation'=> now()->format('d/m/Y H:i'),
+                'agent'          => Auth::user()?->name ?? 'Inconnu',
+                'period_label'   => $periodLabel,
+            ], 'services_remuneres'),
+
+            'excel' => $this->excelService->downloadAnaserServicesRemuneres(
+                $records,
+                $periodLabel,
+                Auth::user()?->name ?? 'Inconnu'
+            ),
+
+            'word' => $this->wordService->downloadServicesRemuneres($records, $periodLabel, Auth::user()?->name ?? 'Inconnu'),
         };
     }
 
