@@ -243,50 +243,55 @@ class DashboardController extends ApiController
      */
     public function tendancesMensuelles(Request $request): JsonResponse
     {
-        $mois  = $request->get('mois');
-        $annee = $request->get('annee');
-        $svcId = $request->get('service_id');
+        try {
+            $mois  = $request->get('mois');
+            $annee = $request->get('annee');
+            $svcId = $request->get('service_id');
 
-        // Récupérer les IDs filtrés puis agréger en sous-requête pour éviter
-        // les conflits PostgreSQL GROUP BY / whereHas avec jointures imbriquées.
-        $infIds = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)->pluck('id');
-        $accIds = $this->applyAccidentFilters(Accident::visibleByUser(), $request)->pluck('id');
+            // Récupérer les IDs filtrés puis agréger en sous-requête pour éviter
+            // les conflits PostgreSQL GROUP BY / whereHas avec jointures imbriquées.
+            $infIds = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)->pluck('infractions.id');
+            $accIds = $this->applyAccidentFilters(Accident::visibleByUser(), $request)->pluck('accidents.id');
 
-        $immBase = ImmigrationClandestine::visibleByUser();
-        if ($annee) $immBase->whereYear('date', $annee);
-        if ($mois)  $immBase->whereMonth('date', (int)$mois);
-        if ($svcId) $immBase->where('service_id', $svcId);
-        $immIds = $immBase->pluck('id');
+            $immBase = ImmigrationClandestine::visibleByUser();
+            if ($annee) $immBase->whereYear('date', $annee);
+            if ($mois)  $immBase->whereMonth('date', (int)$mois);
+            if ($svcId) $immBase->where('service_id', $svcId);
+            $immIds = $immBase->pluck('immigrations_clandestines.id');
 
-        if ($mois) {
-            $infractions = DB::table('infractions')->whereIn('id', $infIds)
-                ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
-            $accidents = DB::table('accidents')->whereIn('id', $accIds)
-                ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
-            $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
-                ->selectRaw((int)$mois . ' as mois, SUM(nombre_interpellation) as total')->get();
-        } else {
-            $infractions = DB::table('infractions')->whereIn('id', $infIds)
-                ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
-                ->groupByRaw('EXTRACT(MONTH FROM date)::int')
-                ->orderBy('mois')->get();
+            if ($mois) {
+                $infractions = DB::table('infractions')->whereIn('id', $infIds)
+                    ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
+                $accidents = DB::table('accidents')->whereIn('id', $accIds)
+                    ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
+                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
+                    ->selectRaw((int)$mois . ' as mois, SUM(nombre_interpellation) as total')->get();
+            } else {
+                $infractions = DB::table('infractions')->whereIn('id', $infIds)
+                    ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
+                    ->groupByRaw('EXTRACT(MONTH FROM date)::int')
+                    ->orderBy('mois')->get();
 
-            $accidents = DB::table('accidents')->whereIn('id', $accIds)
-                ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
-                ->groupByRaw('EXTRACT(MONTH FROM date)::int')
-                ->orderBy('mois')->get();
+                $accidents = DB::table('accidents')->whereIn('id', $accIds)
+                    ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
+                    ->groupByRaw('EXTRACT(MONTH FROM date)::int')
+                    ->orderBy('mois')->get();
 
-            $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
-                ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, SUM(nombre_interpellation) as total')
-                ->groupByRaw('EXTRACT(MONTH FROM date)::int')
-                ->orderBy('mois')->get();
+                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
+                    ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, SUM(nombre_interpellation) as total')
+                    ->groupByRaw('EXTRACT(MONTH FROM date)::int')
+                    ->orderBy('mois')->get();
+            }
+
+            return $this->successResponse([
+                'infractions' => $infractions,
+                'accidents'   => $accidents,
+                'immigration' => $immigration,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('tendancesMensuelles error: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            return $this->successResponse(['infractions' => [], 'accidents' => [], 'immigration' => [], 'debug_error' => $e->getMessage()]);
         }
-
-        return $this->successResponse([
-            'infractions' => $infractions,
-            'accidents'   => $accidents,
-            'immigration' => $immigration,
-        ]);
     }
 
     /**
