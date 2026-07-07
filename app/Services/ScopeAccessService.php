@@ -186,8 +186,12 @@ class ScopeAccessService
      */
     protected function applyScope(Builder $query, ?ScopeType $scopeType, ?int $scopeId): Builder
     {
-        // Scope non configuré : sécurité par défaut → aucun résultat
+        // Scope non configuré : les admins/super_admins voient tout, les autres rien
         if ($scopeType === null) {
+            $user = auth()->user();
+            if ($user && $user->hasRole(['super_admin', 'admin'])) {
+                return $query;
+            }
             return $query->whereRaw('1 = 0');
         }
 
