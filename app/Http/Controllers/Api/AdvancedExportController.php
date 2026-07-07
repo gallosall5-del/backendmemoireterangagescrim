@@ -30,12 +30,15 @@ class AdvancedExportController extends ApiController
     public function accidents(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'          => 'required|in:pdf,word,excel',
+            'periodType'      => 'required|string',
+            'month'           => 'nullable|integer|min:1|max:12',
+            'year'            => 'nullable|integer|min:2000|max:2100',
+            'start_date'      => 'nullable|date',
+            'end_date'        => 'nullable|date|after_or_equal:start_date',
+            'region_id'       => 'nullable|integer',
+            'departement_id'  => 'nullable|integer',
+            'commune_id'      => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -46,6 +49,7 @@ class AdvancedExportController extends ApiController
 
         $query = Accident::with(['service', 'commune.departement.region', 'victimes'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
+        $this->applyGeoFilters($query, $request);
         $accidents = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('accidents', $request->format, $periodLabel, $accidents->count());
@@ -73,12 +77,15 @@ class AdvancedExportController extends ApiController
     public function infractions(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -89,6 +96,7 @@ class AdvancedExportController extends ApiController
 
         $query = Infraction::with(['typeInfraction.categorieInfraction', 'service', 'commune.departement.region'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
+        $this->applyGeoFilters($query, $request);
         $infractions = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('infractions', $request->format, $periodLabel, $infractions->count());
@@ -116,12 +124,15 @@ class AdvancedExportController extends ApiController
     public function immigrations(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -132,6 +143,7 @@ class AdvancedExportController extends ApiController
 
         $query = ImmigrationClandestine::with(['service'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
+        $this->applyGeoFiltersViaService($query, $request);
         $records = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('immigrations', $request->format, $periodLabel, $records->count());
@@ -158,12 +170,15 @@ class AdvancedExportController extends ApiController
     public function amendes(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -174,6 +189,7 @@ class AdvancedExportController extends ApiController
 
         $query = AmendePieceSaisie::with(['service', 'commune.departement.region'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
+        $this->applyGeoFilters($query, $request);
         $records = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('amendes', $request->format, $periodLabel, $records->count());
@@ -201,12 +217,15 @@ class AdvancedExportController extends ApiController
     public function personnels(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -218,6 +237,7 @@ class AdvancedExportController extends ApiController
         $query = Personnel::with(['service.commune.departement.region'])->visibleByUser();
         if ($from) $query->where('date_entree_corps', '>=', $from);
         if ($to)   $query->where('date_entree_corps', '<=', $to);
+        $this->applyGeoFiltersViaService($query, $request);
         $records = $query->orderBy('nom')->get();
 
         $this->logExport('personnels', $request->format, $periodLabel, $records->count());
@@ -245,12 +265,15 @@ class AdvancedExportController extends ApiController
     public function victimes(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -263,8 +286,23 @@ class AdvancedExportController extends ApiController
             'accident.commune.departement.region',
             'infraction.commune.departement.region',
         ])->visibleByUser();
-        if ($from) $query->whereHas('accident', fn($q) => $q->where('date', '>=', $from))
-            ->orWhereHas('infraction', fn($q) => $q->where('date', '>=', $from));
+        if ($from || $to) {
+            $query->where(function ($q) use ($from, $to) {
+                $q->whereHas('accident', function ($aq) use ($from, $to) {
+                    if ($from) $aq->where('date', '>=', $from);
+                    if ($to)   $aq->where('date', '<=', $to);
+                })->orWhereHas('infraction', function ($iq) use ($from, $to) {
+                    if ($from) $iq->where('date', '>=', $from);
+                    if ($to)   $iq->where('date', '<=', $to);
+                });
+            });
+        }
+        if ($request->region_id || $request->departement_id || $request->commune_id) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('accident', fn($aq) => $this->applyGeoFilters($aq, $request))
+                  ->orWhereHas('infraction', fn($iq) => $this->applyGeoFilters($iq, $request));
+            });
+        }
         $records = $query->orderBy('created_at')->get();
 
         $this->logExport('victimes', $request->format, $periodLabel, $records->count());
@@ -292,12 +330,15 @@ class AdvancedExportController extends ApiController
     public function servicesRemuneres(Request $request)
     {
         $request->validate([
-            'format'     => 'required|in:pdf,word,excel',
-            'periodType' => 'required|string',
-            'month'      => 'nullable|integer|min:1|max:12',
-            'year'       => 'nullable|integer|min:2000|max:2100',
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'format'         => 'required|in:pdf,word,excel',
+            'periodType'     => 'required|string',
+            'month'          => 'nullable|integer|min:1|max:12',
+            'year'           => 'nullable|integer|min:2000|max:2100',
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date|after_or_equal:start_date',
+            'region_id'      => 'nullable|integer',
+            'departement_id' => 'nullable|integer',
+            'commune_id'     => 'nullable|integer',
         ]);
         if (!$this->checkExportPermission($request->format)) {
             return $this->errorResponse('Permission insuffisante pour ce format d\'export.', 403);
@@ -308,6 +349,7 @@ class AdvancedExportController extends ApiController
 
         $query = ServiceRemunere::with(['service', 'commune.departement.region'])->visibleByUser();
         $this->applyDateRange($query, $from, $to);
+        $this->applyGeoFilters($query, $request);
         $records = $query->orderBy('date')->orderBy('created_at')->get();
 
         $this->logExport('services_remuneres', $request->format, $periodLabel, $records->count());
@@ -340,6 +382,33 @@ class AdvancedExportController extends ApiController
             'excel' => $user->can('export.csv'),
             default => false,
         };
+    }
+
+    /** Filtre géo sur les modèles ayant commune_id (Infraction, Accident, Amende, ServiceRemunere). */
+    private function applyGeoFilters($query, Request $request): void
+    {
+        if ($request->commune_id) {
+            $query->where('commune_id', $request->commune_id);
+        } elseif ($request->departement_id) {
+            $query->whereHas('commune', fn($q) => $q->where('departement_id', $request->departement_id));
+        } elseif ($request->region_id) {
+            $query->whereHas('commune.departement', fn($q) => $q->where('region_id', $request->region_id));
+        }
+    }
+
+    /** Filtre géo sur les modèles sans commune_id direct mais avec service_id (Immigration, Personnel). */
+    private function applyGeoFiltersViaService($query, Request $request): void
+    {
+        if (!$request->commune_id && !$request->departement_id && !$request->region_id) return;
+        $query->whereHas('service', function ($q) use ($request) {
+            if ($request->commune_id) {
+                $q->where('commune_id', $request->commune_id);
+            } elseif ($request->departement_id) {
+                $q->whereHas('commune', fn($c) => $c->where('departement_id', $request->departement_id));
+            } elseif ($request->region_id) {
+                $q->whereHas('commune.departement', fn($c) => $c->where('region_id', $request->region_id));
+            }
+        });
     }
 
     private function applyDateRange($query, ?string $from, ?string $to): void
