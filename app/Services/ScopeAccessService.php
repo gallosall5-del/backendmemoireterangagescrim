@@ -186,10 +186,10 @@ class ScopeAccessService
      */
     protected function applyScope(Builder $query, ?ScopeType $scopeType, ?int $scopeId): Builder
     {
-        // Scope non configuré : les admins/super_admins voient tout, les autres rien
+        // Scope non configuré : administrateur et gestionnaire voient tout, agent rien
         if ($scopeType === null) {
             $user = auth()->user();
-            if ($user && $user->hasRole(['super_admin', 'admin'])) {
+            if ($user && $user->hasRole(['administrateur', 'gestionnaire'])) {
                 return $query;
             }
             return $query->whereRaw('1 = 0');
