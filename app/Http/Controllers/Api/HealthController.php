@@ -22,6 +22,16 @@ class HealthController extends ApiController
         $scheme = config('mail.mailers.smtp.scheme');
         $user   = config('mail.mailers.smtp.username');
 
+        // Test connectivité réseau brute
+        $socketTest = 'not tested';
+        $fp = @fsockopen($host, (int) $port, $errno, $errstr, 10);
+        if ($fp) {
+            $socketTest = 'connected';
+            fclose($fp);
+        } else {
+            $socketTest = "failed: $errstr ($errno)";
+        }
+
         try {
             Mail::raw('Test GESCRIM mail from Railway — ' . now()->toISOString(), function ($m) use ($to) {
                 $m->to($to)->subject('[GESCRIM] Test mail Railway');
@@ -34,6 +44,7 @@ class HealthController extends ApiController
                 'port'    => $port,
                 'scheme'  => $scheme,
                 'user'    => $user,
+                'socket'  => $socketTest,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -44,6 +55,7 @@ class HealthController extends ApiController
                 'port'    => $port,
                 'scheme'  => $scheme,
                 'user'    => $user,
+                'socket'  => $socketTest,
             ], 500);
         }
     }
