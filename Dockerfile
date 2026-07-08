@@ -23,8 +23,8 @@ RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions sto
 
 RUN cp .env.example .env \
     && sed -i 's|^APP_KEY=.*|APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=|' .env \
-    && php artisan package:discover --ansi 2>&1 || true
-RUN rm -f .env
+    && php artisan package:discover --ansi 2>&1 || true \
+    && rm -f .env
 
 EXPOSE 8080
 

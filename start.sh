@@ -103,6 +103,7 @@ php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_en
 
 
 echo "--- caching config ---" >&2
+rm -f /app/.env
 php /app/artisan config:clear 2>&1 || true
 php /app/artisan route:clear 2>&1 || true
 php /app/artisan view:clear 2>&1 || true
