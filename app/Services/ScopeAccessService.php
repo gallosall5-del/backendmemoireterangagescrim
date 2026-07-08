@@ -186,13 +186,13 @@ class ScopeAccessService
      */
     protected function applyScope(Builder $query, ?ScopeType $scopeType, ?int $scopeId): Builder
     {
-        // Scope non configuré : administrateur et gestionnaire voient tout, agent rien
+        // Scope non configuré : seul un agent sans scope est bloqué — tout autre rôle voit tout
         if ($scopeType === null) {
             $user = auth()->user();
-            if ($user && $user->hasRole(['administrateur', 'gestionnaire'])) {
-                return $query;
+            if ($user && $user->hasRole('agent')) {
+                return $query->whereRaw('1 = 0');
             }
-            return $query->whereRaw('1 = 0');
+            return $query;
         }
 
         if ($scopeType === ScopeType::NATIONAL) {

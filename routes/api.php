@@ -51,6 +51,7 @@ Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::put('profile', [AuthController::class, 'updateProfile']);
         Route::post('change-password', [AuthController::class, 'changePassword']);
         Route::post('reset-password/{target}', [AuthController::class, 'adminResetPassword'])->middleware('permission:users.update');
         // 2FA management

@@ -559,6 +559,40 @@ class AuthController extends ApiController
     }
 
     // ──────────────────────────────────────────────────────────────
+    // MODIFIER PROFIL (nom + téléphone)
+    // ──────────────────────────────────────────────────────────────
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name'      => 'required|string|max:255',
+            'telephone' => 'nullable|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Erreur de validation', 422, $validator->errors());
+        }
+
+        $user = auth()->user();
+        $user->update($validator->validated());
+
+        AuditLog::create([
+            'user_id'    => $user->id,
+            'action'     => 'profile_updated',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'new_values' => ['name' => $user->name],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse([
+            'name'      => $user->name,
+            'telephone' => $user->telephone,
+        ], 'Profil mis à jour avec succès.');
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // CHANGER MOT DE PASSE
     // ──────────────────────────────────────────────────────────────
 
