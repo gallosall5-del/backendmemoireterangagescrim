@@ -30,6 +30,10 @@ class FullReportController extends ApiController
 
     public function generate(Request $request)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(120);
+        error_reporting(error_reporting() & ~E_DEPRECATED);
+
         $request->validate([
             'format'     => 'required|in:pdf,word,excel',
             'periodType' => 'required|string',

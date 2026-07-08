@@ -32,6 +32,7 @@ class WordExportService
         array  $rows,
         string $filename
     ): Response {
+        $previousLevel = error_reporting(error_reporting() & ~E_DEPRECATED);
         $word    = $this->makeDoc();
         $section = $this->makeSection($word);
 
@@ -44,6 +45,7 @@ class WordExportService
             ['bold' => true, 'size' => 10, 'color' => self::COLOR_TITLE_FG]);
         $this->addFooter($section);
 
+        error_reporting($previousLevel);
         return $this->mkResponse($word, $filename);
     }
 
@@ -60,6 +62,7 @@ class WordExportService
         array  $detailRows,
         string $detailTitle = 'DÉTAIL COMPLET'
     ): Response {
+        $previousLevel = error_reporting(error_reporting() & ~E_DEPRECATED);
         $word    = $this->makeDoc();
         $section = $this->makeSection($word);
 
@@ -85,6 +88,7 @@ class WordExportService
             ['bold' => true, 'size' => 10, 'color' => self::COLOR_TITLE_FG]);
         $this->addFooter($section);
 
+        error_reporting($previousLevel);
         return $this->mkResponse($word, $filename);
     }
 
@@ -660,7 +664,12 @@ class WordExportService
     private function mkResponse(PhpWord $word, string $filename): Response
     {
         $tmpPath = tempnam(sys_get_temp_dir(), 'gescrim_docx_');
-        IOFactory::createWriter($word, 'Word2007')->save($tmpPath);
+        $previousLevel = error_reporting(error_reporting() & ~E_DEPRECATED);
+        try {
+            IOFactory::createWriter($word, 'Word2007')->save($tmpPath);
+        } finally {
+            error_reporting($previousLevel);
+        }
         $content  = file_get_contents($tmpPath);
         unlink($tmpPath);
         $fullName = $filename . '_' . now()->format('Y-m-d') . '.docx';

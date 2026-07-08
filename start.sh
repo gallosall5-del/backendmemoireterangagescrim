@@ -5,11 +5,11 @@ echo "APP_ENV=${APP_ENV}" >&2
 php --version >&2
 
 echo "--- fix storage permissions ---" >&2
-mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/bootstrap/cache
+mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/storage/fonts /app/bootstrap/cache
 chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
 
 echo "--- starting PHP server on :${PORT:-8000} (background) ---" >&2
-php -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
+php -d memory_limit=512M -d max_execution_time=60 -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
 PHP_PID=$!
 
 # Wait for database to be reachable (max 60s)

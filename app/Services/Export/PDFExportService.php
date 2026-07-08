@@ -13,6 +13,11 @@ class PDFExportService
         array  $data,
         string $filename
     ): \Illuminate\Http\Response {
+        $fontDir = storage_path('fonts');
+        if (!is_dir($fontDir)) {
+            @mkdir($fontDir, 0775, true);
+        }
+
         $pdf = Pdf::loadView($view, $data)
             ->setPaper('a4', 'landscape');
 

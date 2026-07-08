@@ -26,9 +26,17 @@ class AdvancedExportController extends ApiController
         private WordExportService  $wordService,
     ) {}
 
+    private function prepareExportEnvironment(): void
+    {
+        ini_set('memory_limit', '512M');
+        set_time_limit(120);
+        error_reporting(error_reporting() & ~E_DEPRECATED);
+    }
+
     // POST /api/accidents/export
     public function accidents(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'          => 'required|in:pdf,word,excel',
             'periodType'      => 'required|string',
@@ -76,6 +84,7 @@ class AdvancedExportController extends ApiController
     // POST /api/infractions/export
     public function infractions(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
@@ -123,6 +132,7 @@ class AdvancedExportController extends ApiController
     // POST /api/immigrations/export
     public function immigrations(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
@@ -169,6 +179,7 @@ class AdvancedExportController extends ApiController
 
     public function amendes(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
@@ -216,6 +227,7 @@ class AdvancedExportController extends ApiController
     // POST /api/personnels/export
     public function personnels(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
@@ -264,6 +276,7 @@ class AdvancedExportController extends ApiController
     // POST /api/victimes/export
     public function victimes(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
@@ -329,6 +342,7 @@ class AdvancedExportController extends ApiController
     // POST /api/services-remuneres/export
     public function servicesRemuneres(Request $request)
     {
+        $this->prepareExportEnvironment();
         $request->validate([
             'format'         => 'required|in:pdf,word,excel',
             'periodType'     => 'required|string',
