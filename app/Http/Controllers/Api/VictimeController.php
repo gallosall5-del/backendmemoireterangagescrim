@@ -36,7 +36,7 @@ class VictimeController extends ApiController
             $query->where('sexe', $request->sexe);
         }
         if ($request->filled('est_decede')) {
-            $query->where('est_decede', $request->est_decede === '1' || $request->est_decede === 'true');
+            $query->where('statut_deces', $request->est_decede === '1' || $request->est_decede === 'true');
         }
         if ($request->filled('type')) {
             if ($request->type === 'accident') {
