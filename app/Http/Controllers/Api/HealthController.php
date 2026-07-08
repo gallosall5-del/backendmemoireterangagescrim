@@ -10,7 +10,7 @@ class HealthController extends ApiController
 {
     public function index(): JsonResponse
     {
-        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => '92b0209']);
+        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => 'a9714c9-fix']);
     }
 
     public function testMail(Request $request): JsonResponse
