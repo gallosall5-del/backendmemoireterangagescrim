@@ -157,54 +157,59 @@ class DashboardController extends ApiController
      */
     public function infractionsParRegion(Request $request): JsonResponse
     {
-        $request->validate([
-            'annee'          => 'nullable|integer|min:2000|max:2100',
-            'mois'           => 'nullable|integer|min:1|max:12',
-            'region_id'      => 'nullable|integer|min:1',
-            'departement_id' => 'nullable|integer|min:1',
-            'commune_id'     => 'nullable|integer|min:1',
-            'service_id'     => 'nullable|integer|min:1',
-        ]);
+        try {
+            $request->validate([
+                'annee'          => 'nullable|integer|min:2000|max:2100',
+                'mois'           => 'nullable|integer|min:1|max:12',
+                'region_id'      => 'nullable|integer|min:1',
+                'departement_id' => 'nullable|integer|min:1',
+                'commune_id'     => 'nullable|integer|min:1',
+                'service_id'     => 'nullable|integer|min:1',
+            ]);
 
-        $annee  = $request->integer('annee') ?: null;
-        $mois   = $request->integer('mois') ?: null;
-        $user   = auth()->user();
+            $annee  = $request->integer('annee') ?: null;
+            $mois   = $request->integer('mois') ?: null;
+            $user   = auth()->user();
 
-        $query = DB::table('infractions')
-            ->join('communes',    'infractions.commune_id',       '=', 'communes.id')
-            ->join('departements','communes.departement_id',       '=', 'departements.id')
-            ->join('regions',     'departements.region_id',        '=', 'regions.id');
+            $query = DB::table('infractions')
+                ->join('communes',    'infractions.commune_id',       '=', 'communes.id')
+                ->join('departements','communes.departement_id',       '=', 'departements.id')
+                ->join('regions',     'departements.region_id',        '=', 'regions.id');
 
-        if ($annee) $query->where('infractions.annee', $annee);
+            if ($annee) $query->where('infractions.annee', $annee);
 
-        if ($mois) {
-            $query->whereMonth('infractions.date', $mois);
+            if ($mois) {
+                $query->whereMonth('infractions.date', $mois);
+            }
+
+            // Filtres geo frontend
+            if ($request->filled('region_id'))     $query->where('regions.id',       (int)$request->region_id);
+            if ($request->filled('departement_id'))$query->where('departements.id',  (int)$request->departement_id);
+            if ($request->filled('commune_id'))    $query->where('communes.id',       (int)$request->commune_id);
+            if ($request->filled('service_id'))    $query->where('infractions.service_id', (int)$request->service_id);
+
+            // Scope territorial — null = admin/gestionnaire sans scope → accès total
+            if ($user->read_scope_type !== null && $user->read_scope_type !== ScopeType::NATIONAL) {
+                match ($user->read_scope_type) {
+                    ScopeType::REGION      => $query->where('regions.id',       $user->read_scope_id),
+                    ScopeType::DEPARTEMENT => $query->where('departements.id',  $user->read_scope_id),
+                    ScopeType::COMMUNE     => $query->where('communes.id',      $user->read_scope_id),
+                    ScopeType::SERVICE     => $query->where('infractions.service_id', $user->read_scope_id),
+                    default                => null,
+                };
+            }
+
+            $data = $query
+                ->select('regions.nom as region', DB::raw('COUNT(*) as total'))
+                ->groupBy('regions.nom')
+                ->orderByDesc('total')
+                ->get();
+
+            return $this->successResponse($data);
+        } catch (\Throwable $e) {
+            \Log::error('infractionsParRegion error: ' . $e->getMessage());
+            return $this->successResponse([]);
         }
-
-        // Filtres geo frontend
-        if ($request->filled('region_id'))     $query->where('regions.id',       (int)$request->region_id);
-        if ($request->filled('departement_id'))$query->where('departements.id',  (int)$request->departement_id);
-        if ($request->filled('commune_id'))    $query->where('communes.id',       (int)$request->commune_id);
-        if ($request->filled('service_id'))    $query->where('infractions.service_id', (int)$request->service_id);
-
-        // Scope territorial
-        if ($user->read_scope_type !== ScopeType::NATIONAL) {
-            match ($user->read_scope_type) {
-                ScopeType::REGION      => $query->where('regions.id',       $user->read_scope_id),
-                ScopeType::DEPARTEMENT => $query->where('departements.id',  $user->read_scope_id),
-                ScopeType::COMMUNE     => $query->where('communes.id',      $user->read_scope_id),
-                ScopeType::SERVICE     => $query->where('infractions.service_id', $user->read_scope_id),
-                default                => null,
-            };
-        }
-
-        $data = $query
-            ->select('regions.nom as region', DB::raw('COUNT(*) as total'))
-            ->groupBy('regions.nom')
-            ->orderByDesc('total')
-            ->get();
-
-        return $this->successResponse($data);
     }
 
     /**
@@ -220,14 +225,19 @@ class DashboardController extends ApiController
      */
     public function accidentsParType(Request $request): JsonResponse
     {
-        $query = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
+        try {
+            $query = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
 
-        $data = $query
-            ->select('type', DB::raw('COUNT(*) as total'))
-            ->groupBy('type')
-            ->get();
+            $data = $query
+                ->select('accidents.type', DB::raw('COUNT(*) as total'))
+                ->groupBy('accidents.type')
+                ->get();
 
-        return $this->successResponse($data);
+            return $this->successResponse($data);
+        } catch (\Throwable $e) {
+            \Log::error('accidentsParType error: ' . $e->getMessage());
+            return $this->successResponse([]);
+        }
     }
 
     /**
@@ -248,37 +258,36 @@ class DashboardController extends ApiController
             $annee = $request->get('annee');
             $svcId = $request->get('service_id');
 
-            // Récupérer les IDs filtrés puis agréger en sous-requête pour éviter
-            // les conflits PostgreSQL GROUP BY / whereHas avec jointures imbriquées.
-            $infIds = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)->pluck('infractions.id');
-            $accIds = $this->applyAccidentFilters(Accident::visibleByUser(), $request)->pluck('accidents.id');
+            // Sous-requêtes d'IDs (évite de matérialiser des milliers d'IDs en mémoire)
+            $infSubquery = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)->select('infractions.id')->getQuery();
+            $accSubquery = $this->applyAccidentFilters(Accident::visibleByUser(), $request)->select('accidents.id')->getQuery();
 
             $immBase = ImmigrationClandestine::visibleByUser();
             if ($annee) $immBase->whereYear('date', $annee);
             if ($mois)  $immBase->whereMonth('date', (int)$mois);
             if ($svcId) $immBase->where('service_id', $svcId);
-            $immIds = $immBase->pluck('immigrations_clandestines.id');
+            $immSubquery = $immBase->select('immigrations_clandestines.id')->getQuery();
 
             if ($mois) {
-                $infractions = DB::table('infractions')->whereIn('id', $infIds)
+                $infractions = DB::table('infractions')->whereIn('id', $infSubquery)
                     ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
-                $accidents = DB::table('accidents')->whereIn('id', $accIds)
+                $accidents = DB::table('accidents')->whereIn('id', $accSubquery)
                     ->selectRaw((int)$mois . ' as mois, COUNT(*) as total')->get();
-                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
-                    ->selectRaw((int)$mois . ' as mois, SUM(nombre_interpellation) as total')->get();
+                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immSubquery)
+                    ->selectRaw((int)$mois . ' as mois, COALESCE(SUM(nombre_interpellation), 0) as total')->get();
             } else {
-                $infractions = DB::table('infractions')->whereIn('id', $infIds)
+                $infractions = DB::table('infractions')->whereIn('id', $infSubquery)
                     ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
                     ->groupByRaw('EXTRACT(MONTH FROM date)::int')
                     ->orderBy('mois')->get();
 
-                $accidents = DB::table('accidents')->whereIn('id', $accIds)
+                $accidents = DB::table('accidents')->whereIn('id', $accSubquery)
                     ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COUNT(*) as total')
                     ->groupByRaw('EXTRACT(MONTH FROM date)::int')
                     ->orderBy('mois')->get();
 
-                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immIds)
-                    ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, SUM(nombre_interpellation) as total')
+                $immigration = DB::table('immigrations_clandestines')->whereIn('id', $immSubquery)
+                    ->selectRaw('EXTRACT(MONTH FROM date)::int as mois, COALESCE(SUM(nombre_interpellation), 0) as total')
                     ->groupByRaw('EXTRACT(MONTH FROM date)::int')
                     ->orderBy('mois')->get();
             }
@@ -299,46 +308,51 @@ class DashboardController extends ApiController
      */
     public function infractionsParType(Request $request): JsonResponse
     {
-        $annee  = $request->get('annee');
-        $mois   = $request->get('mois');
-        $user   = auth()->user();
+        try {
+            $annee  = $request->get('annee');
+            $mois   = $request->get('mois');
+            $user   = auth()->user();
 
-        $query = DB::table('infractions')
-            ->join('type_infractions',     'infractions.type_infraction_id',          '=', 'type_infractions.id')
-            ->join('categorie_infractions','type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id');
+            $query = DB::table('infractions')
+                ->join('type_infractions',     'infractions.type_infraction_id',          '=', 'type_infractions.id')
+                ->join('categorie_infractions','type_infractions.categorie_infraction_id', '=', 'categorie_infractions.id');
 
-        if ($annee) $query->where('infractions.annee', $annee);
+            if ($annee) $query->where('infractions.annee', $annee);
 
-        if ($mois) {
-            $query->whereMonth('infractions.date', (int)$mois);
-        }
-
-        if ($request->has('region_id') || $request->has('departement_id') || $request->has('commune_id')) {
-            $query->join('communes',    'infractions.commune_id',  '=', 'communes.id')
-                  ->join('departements','communes.departement_id', '=', 'departements.id');
-            if ($request->has('region_id'))      $query->join('regions', 'departements.region_id', '=', 'regions.id')->where('regions.id', $request->region_id);
-            if ($request->has('departement_id')) $query->where('departements.id', $request->departement_id);
-            if ($request->has('commune_id'))     $query->where('communes.id',     $request->commune_id);
-        }
-        if ($request->has('service_id')) {
-            $query->where('infractions.service_id', $request->service_id);
-        }
-
-        if ($user->read_scope_type !== ScopeType::NATIONAL) {
-            if ($user->read_scope_type === ScopeType::SERVICE) {
-                $query->where('infractions.service_id', $user->read_scope_id);
-            } else {
-                $query->whereIn('infractions.id', Infraction::visibleByUser()->select('id')->getQuery());
+            if ($mois) {
+                $query->whereMonth('infractions.date', (int)$mois);
             }
+
+            if ($request->filled('region_id') || $request->filled('departement_id') || $request->filled('commune_id')) {
+                $query->join('communes',    'infractions.commune_id',  '=', 'communes.id')
+                      ->join('departements','communes.departement_id', '=', 'departements.id');
+                if ($request->filled('region_id'))      $query->join('regions', 'departements.region_id', '=', 'regions.id')->where('regions.id', (int)$request->region_id);
+                if ($request->filled('departement_id')) $query->where('departements.id', (int)$request->departement_id);
+                if ($request->filled('commune_id'))     $query->where('communes.id',     (int)$request->commune_id);
+            }
+            if ($request->filled('service_id')) {
+                $query->where('infractions.service_id', (int)$request->service_id);
+            }
+
+            if ($user->read_scope_type !== null && $user->read_scope_type !== ScopeType::NATIONAL) {
+                if ($user->read_scope_type === ScopeType::SERVICE) {
+                    $query->where('infractions.service_id', $user->read_scope_id);
+                } else {
+                    $query->whereIn('infractions.id', Infraction::visibleByUser()->select('infractions.id')->getQuery());
+                }
+            }
+
+            $data = $query
+                ->select('categorie_infractions.nom as categorie', 'type_infractions.nom as type', DB::raw('COUNT(*) as total'))
+                ->groupBy('categorie_infractions.nom', 'type_infractions.nom')
+                ->orderByDesc('total')
+                ->get();
+
+            return $this->successResponse($data);
+        } catch (\Throwable $e) {
+            \Log::error('infractionsParType error: ' . $e->getMessage());
+            return $this->successResponse([]);
         }
-
-        $data = $query
-            ->select('categorie_infractions.nom as categorie', 'type_infractions.nom as type', DB::raw('COUNT(*) as total'))
-            ->groupBy('categorie_infractions.nom', 'type_infractions.nom')
-            ->orderByDesc('total')
-            ->get();
-
-        return $this->successResponse($data);
     }
 
     /**
@@ -357,56 +371,55 @@ class DashboardController extends ApiController
      */
     public function saisiesParHeure(Request $request): JsonResponse
     {
-        $annee  = $request->get('annee');
-        $mois   = $request->get('mois');
-        $svcId  = $request->get('service_id');
+        try {
+            $annee  = $request->get('annee');
+            $mois   = $request->get('mois');
+            $svcId  = $request->get('service_id');
 
-        $infQuery = $this->applyInfractionFilters(Infraction::visibleByUser(), $request);
-        $accQuery = $this->applyAccidentFilters(Accident::visibleByUser(), $request);
+            $buildHourQuery = function ($query, string $table) use ($annee, $mois, $svcId) {
+                if ($annee) $query->whereYear('created_at', $annee);
+                if ($mois)  $query->whereMonth('created_at', (int)$mois);
+                if ($svcId) $query->where('service_id', $svcId);
+                return $query->select(
+                    DB::raw('EXTRACT(HOUR FROM created_at)::int as heure'),
+                    DB::raw('COUNT(*) as total')
+                )->groupBy(DB::raw('EXTRACT(HOUR FROM created_at)::int'))
+                 ->orderBy('heure');
+            };
 
-        // Distribution par heure de saisie (created_at) — toutes entités confondues
-        $buildHourQuery = function ($query, string $table) use ($annee, $mois, $svcId) {
-            if ($annee) $query->whereYear('created_at', $annee);
-            if ($mois)  $query->whereMonth('created_at', (int)$mois);
-            if ($svcId) $query->where('service_id', $svcId);
-            return $query->select(
-                DB::raw('EXTRACT(HOUR FROM created_at)::int as heure'),
-                DB::raw('COUNT(*) as total')
-            )->groupBy(DB::raw('EXTRACT(HOUR FROM created_at)::int'))
-             ->orderBy('heure');
-        };
+            $infraHeureSaisie = $buildHourQuery(Infraction::visibleByUser(), 'infractions')->get()->keyBy('heure');
+            $accHeureSaisie   = $buildHourQuery(Accident::visibleByUser(), 'accidents')->get()->keyBy('heure');
 
-        $infraHeureSaisie = $buildHourQuery(Infraction::visibleByUser(), 'infractions')->get()->keyBy('heure');
-        $accHeureSaisie   = $buildHourQuery(Accident::visibleByUser(), 'accidents')->get()->keyBy('heure');
+            $infraHeureEvenement = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)
+                ->whereNotNull('heure')
+                ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
+                ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
+                ->orderBy('heure')
+                ->get()->keyBy('heure');
 
-        // Distribution par heure de l'événement (champ heure) — infractions et accidents
-        $infraHeureEvenement = $this->applyInfractionFilters(Infraction::visibleByUser(), $request)
-            ->whereNotNull('heure')
-            ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
-            ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
-            ->orderBy('heure')
-            ->get()->keyBy('heure');
+            $accHeureEvenement = $this->applyAccidentFilters(Accident::visibleByUser(), $request)
+                ->whereNotNull('heure')
+                ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
+                ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
+                ->orderBy('heure')
+                ->get()->keyBy('heure');
 
-        $accHeureEvenement = $this->applyAccidentFilters(Accident::visibleByUser(), $request)
-            ->whereNotNull('heure')
-            ->select(DB::raw("EXTRACT(HOUR FROM heure::time)::int as heure"), DB::raw('COUNT(*) as total'))
-            ->groupBy(DB::raw("EXTRACT(HOUR FROM heure::time)::int"))
-            ->orderBy('heure')
-            ->get()->keyBy('heure');
+            $heures = [];
+            for ($h = 0; $h < 24; $h++) {
+                $heures[] = [
+                    'heure'                      => $h,
+                    'infractions_saisies'        => $infraHeureSaisie->get($h)?->total ?? 0,
+                    'accidents_saisis'           => $accHeureSaisie->get($h)?->total ?? 0,
+                    'infractions_evenement'      => $infraHeureEvenement->get($h)?->total ?? 0,
+                    'accidents_evenement'        => $accHeureEvenement->get($h)?->total ?? 0,
+                ];
+            }
 
-        // Construire un tableau complet 0-23
-        $heures = [];
-        for ($h = 0; $h < 24; $h++) {
-            $heures[] = [
-                'heure'                      => $h,
-                'infractions_saisies'        => $infraHeureSaisie->get($h)?->total ?? 0,
-                'accidents_saisis'           => $accHeureSaisie->get($h)?->total ?? 0,
-                'infractions_evenement'      => $infraHeureEvenement->get($h)?->total ?? 0,
-                'accidents_evenement'        => $accHeureEvenement->get($h)?->total ?? 0,
-            ];
+            return $this->successResponse($heures, 'Distribution horaire des saisies.');
+        } catch (\Throwable $e) {
+            \Log::error('saisiesParHeure error: ' . $e->getMessage());
+            return $this->successResponse([]);
         }
-
-        return $this->successResponse($heures, 'Distribution horaire des saisies.');
     }
 
     /**
@@ -414,31 +427,36 @@ class DashboardController extends ApiController
      */
     public function personnelParService(Request $request): JsonResponse
     {
-        $user  = auth()->user();
-        $svc   = $request->get('service_id');
-        $region= $request->get('region_id');
+        try {
+            $user  = auth()->user();
+            $svc   = $request->get('service_id');
+            $region= $request->get('region_id');
 
-        $query = DB::table('personnels')
-            ->join('services', 'personnels.service_id', '=', 'services.id')
-            ->where('personnels.statut', 'Actif');
+            $query = DB::table('personnels')
+                ->join('services', 'personnels.service_id', '=', 'services.id')
+                ->where('personnels.statut', 'Actif');
 
-        if ($svc)    $query->where('personnels.service_id', $svc);
-        if ($region) {
-            $query->join('communes',    'services.commune_id',    '=', 'communes.id')
-                  ->join('departements','communes.departement_id','=', 'departements.id')
-                  ->where('departements.region_id', $region);
+            if ($svc)    $query->where('personnels.service_id', $svc);
+            if ($region) {
+                $query->join('communes',    'services.commune_id',    '=', 'communes.id')
+                      ->join('departements','communes.departement_id','=', 'departements.id')
+                      ->where('departements.region_id', $region);
+            }
+
+            if ($user->read_scope_type !== null && $user->read_scope_type !== ScopeType::NATIONAL) {
+                $query->whereIn('personnels.id', Personnel::visibleByUser()->select('personnels.id')->getQuery());
+            }
+
+            $data = $query
+                ->select('services.nom as service', 'services.type', DB::raw('COUNT(*) as total'))
+                ->groupBy('services.nom', 'services.type')
+                ->orderByDesc('total')
+                ->get();
+
+            return $this->successResponse($data);
+        } catch (\Throwable $e) {
+            \Log::error('personnelParService error: ' . $e->getMessage());
+            return $this->successResponse([]);
         }
-
-        if ($user->read_scope_type !== ScopeType::NATIONAL) {
-            $query->whereIn('personnels.id', Personnel::visibleByUser()->select('id')->getQuery());
-        }
-
-        $data = $query
-            ->select('services.nom as service', 'services.type', DB::raw('COUNT(*) as total'))
-            ->groupBy('services.nom', 'services.type')
-            ->orderByDesc('total')
-            ->get();
-
-        return $this->successResponse($data);
     }
 }
