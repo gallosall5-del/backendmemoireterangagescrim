@@ -98,6 +98,9 @@ foreach (\$accounts as \$a) {
 }
 " 2>&1 || echo "WARN: test accounts ensure failed" >&2
 
+echo "--- syncing role permissions ---" >&2
+php /app/artisan db:seed --class=RolePermissionSeeder --force 2>&1 || echo "WARN: RolePermissionSeeder failed" >&2
+
 echo "--- enabling 2FA for all users ---" >&2
 php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
 
