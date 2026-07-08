@@ -36,7 +36,6 @@ use App\Http\Controllers\Api\FullReportController;
 
 // ========== Health check Railway ==========
 Route::get('health', [\App\Http\Controllers\Api\HealthController::class, 'index']);
-Route::get('health/test-mail', [\App\Http\Controllers\Api\HealthController::class, 'testMail']);
 
 
 
