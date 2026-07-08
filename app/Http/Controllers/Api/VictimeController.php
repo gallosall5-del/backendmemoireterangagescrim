@@ -22,8 +22,28 @@ class VictimeController extends ApiController
         if ($request->has('accident_id')) {
             $query->where('accident_id', $request->accident_id);
         }
-        if ($request->has('nationalite')) {
+        if ($request->filled('nationalite')) {
             $query->where('nationalite', $request->nationalite);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'ILIKE', "%{$search}%")
+                  ->orWhere('prenom', 'ILIKE', "%{$search}%");
+            });
+        }
+        if ($request->filled('sexe')) {
+            $query->where('sexe', $request->sexe);
+        }
+        if ($request->filled('est_decede')) {
+            $query->where('est_decede', $request->est_decede === '1' || $request->est_decede === 'true');
+        }
+        if ($request->filled('type')) {
+            if ($request->type === 'accident') {
+                $query->whereNotNull('accident_id');
+            } elseif ($request->type === 'infraction') {
+                $query->whereNotNull('infraction_id');
+            }
         }
 
         $victimes = $query->orderByDesc('created_at')

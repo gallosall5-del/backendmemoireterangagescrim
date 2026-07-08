@@ -49,6 +49,18 @@ class AccidentController extends ApiController
         if ($request->has('commune_id')) {
             $query->byCommune($request->commune_id);
         }
+        if ($request->filled('annee')) {
+            $query->whereYear('date', (int) $request->annee);
+        }
+        if ($request->filled('mois')) {
+            $query->whereMonth('date', (int) $request->mois);
+        }
+        if ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', fn($q) => $q->where('region_id', (int) $request->region_id));
+        }
+        if ($request->filled('departement_id')) {
+            $query->whereHas('commune', fn($q) => $q->where('departement_id', (int) $request->departement_id));
+        }
         if ($request->has('date_from') && $request->has('date_to')) {
             $query->byDateRange($request->date_from, $request->date_to);
         }

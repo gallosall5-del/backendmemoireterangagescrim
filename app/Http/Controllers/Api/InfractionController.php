@@ -44,11 +44,20 @@ class InfractionController extends ApiController
         if ($request->has('annee')) {
             $query->byAnnee($request->annee);
         }
+        if ($request->filled('mois')) {
+            $query->whereMonth('date', (int) $request->mois);
+        }
         if ($request->has('service_id')) {
             $query->byService($request->service_id);
         }
         if ($request->has('commune_id')) {
             $query->byCommune($request->commune_id);
+        }
+        if ($request->filled('region_id')) {
+            $query->whereHas('commune.departement', fn($q) => $q->where('region_id', (int) $request->region_id));
+        }
+        if ($request->filled('departement_id')) {
+            $query->whereHas('commune', fn($q) => $q->where('departement_id', (int) $request->departement_id));
         }
         if ($request->has('issue')) {
             $query->byIssue($request->issue);
