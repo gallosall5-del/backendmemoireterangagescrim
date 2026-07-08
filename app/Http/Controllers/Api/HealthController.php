@@ -8,6 +8,6 @@ class HealthController extends ApiController
 {
     public function index(): JsonResponse
     {
-        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => '010576a']);
+        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => 'e9685d2']);
     }
 }
