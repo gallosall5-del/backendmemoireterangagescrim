@@ -53,6 +53,10 @@ class AmendePieceSaisieController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $amendePieceSaisie)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
+        $secondsSinceCreation = $amendePieceSaisie->created_at->diffInSeconds(now());
+        if ($secondsSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
+            return $this->errorResponse('Modification interdite : le délai réglementaire de 1 minute est dépassé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'type'        => 'sometimes|in:Amende,Pièce saisie',
             'service_id'  => 'sometimes|exists:services,id',

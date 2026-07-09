@@ -111,6 +111,10 @@ class ImmigrationClandestineController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $immigrationClandestine)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
+        $secondsSinceCreation = $immigrationClandestine->created_at->diffInSeconds(now());
+        if ($secondsSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
+            return $this->errorResponse('Modification interdite : le délai réglementaire de 1 minute est dépassé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'nombre_interpellation' => 'sometimes|integer|min:0',
             'date' => 'sometimes|date',

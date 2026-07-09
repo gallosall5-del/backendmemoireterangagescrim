@@ -52,6 +52,10 @@ class ServiceRemunereController extends ApiController
         if (!$scopeService->canWrite(auth()->user(), $serviceRemunere)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
+        $secondsSinceCreation = $serviceRemunere->created_at->diffInSeconds(now());
+        if ($secondsSinceCreation > 60 && !auth()->user()->hasRole('administrateur')) {
+            return $this->errorResponse('Modification interdite : le délai réglementaire de 1 minute est dépassé.', 403);
+        }
         $validator = Validator::make($request->all(), [
             'libelle'     => 'sometimes|string|max:255',
             'service_id'  => 'sometimes|exists:services,id',
