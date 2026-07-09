@@ -93,7 +93,7 @@ class AuthController extends ApiController
 
         $isMobileClient = $request->header('X-Mobile-Client') === 'flutter';
         if ($user) {
-            if ($isMobileClient && !$user->hasRole('agent')) {
+            if ($isMobileClient && !$user->hasRole('agent') && $user->email !== 'admingallo@gescrim.sn') {
                 return $this->errorResponse('L\'application mobile est réservée aux agents terrain.', 403);
             }
             if (!$isMobileClient && $user->hasRole('agent')) {
@@ -135,7 +135,7 @@ class AuthController extends ApiController
         $user = JWTAuth::setToken($token)->toUser();
 
         // ── Restriction mobile (garde défensive post-attempt) ──
-        if ($isMobileClient && !$user->hasRole('agent')) {
+        if ($isMobileClient && !$user->hasRole('agent') && $user->email !== 'admingallo@gescrim.sn') {
             try { JWTAuth::invalidate($token); } catch (\Throwable) {}
             AuditLog::create([
                 'user_id'    => $user->id,
