@@ -47,6 +47,26 @@ class AuditLogController extends ApiController
 
     public function show(AuditLog $auditLog): JsonResponse
     {
+        $me          = auth()->user();
+        $currentRole = $me->getRoleNames()->first() ?? '';
+
+        if ($currentRole === 'gestionnaire') {
+            // Gestionnaire : uniquement les logs des agents de sa région
+            $visibleUserIds = User::whereHas('roles', fn($q) => $q->where('name', 'agent'))
+                ->whereHas('service', function ($sq) use ($me) {
+                    $sq->whereHas('commune.departement', fn($dq) => $dq->where('region_id', $me->read_scope_id));
+                })->pluck('id');
+            if ($auditLog->user_id === null || !$visibleUserIds->contains($auditLog->user_id)) {
+                return $this->errorResponse('Accès refusé.', 403);
+            }
+        } elseif ($currentRole === 'agent') {
+            // Agent : uniquement ses propres logs
+            if ($auditLog->user_id !== $me->id) {
+                return $this->errorResponse('Accès refusé.', 403);
+            }
+        }
+        // Administrateur : accès sans restriction
+
         $auditLog->load('user');
         return $this->successResponse($auditLog);
     }

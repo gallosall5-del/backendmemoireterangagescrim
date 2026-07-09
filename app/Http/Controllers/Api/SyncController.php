@@ -71,6 +71,17 @@ class SyncController extends ApiController
                 foreach ($victimesData as $v) {
                     $v['infraction_id'] = $record->id;
                     unset($v['accident_id'], $v['local_id'], $v['parent_local_id'], $v['parent_type'], $v['sync_status']);
+                    $victimeValidator = Validator::make($v, [
+                        'nom'        => 'nullable|string|max:255',
+                        'prenom'     => 'nullable|string|max:255',
+                        'sexe'       => 'nullable|in:M,F',
+                        'age'        => 'nullable|integer|min:0|max:150',
+                        'nationalite' => 'nullable|string|max:100',
+                    ]);
+                    if ($victimeValidator->fails()) {
+                        \Illuminate\Support\Facades\Log::warning('SyncController: victime ignorée (infraction)', ['errors' => $victimeValidator->errors()->toArray(), 'local_id' => $localId]);
+                        continue;
+                    }
                     Victime::create($v);
                 }
                 DB::statement('RELEASE SAVEPOINT sp_victimes_inf_' . $record->id);
@@ -99,6 +110,17 @@ class SyncController extends ApiController
                 foreach ($victimesData as $v) {
                     $v['accident_id'] = $record->id;
                     unset($v['infraction_id'], $v['local_id'], $v['parent_local_id'], $v['parent_type'], $v['sync_status']);
+                    $victimeValidator = Validator::make($v, [
+                        'nom'        => 'nullable|string|max:255',
+                        'prenom'     => 'nullable|string|max:255',
+                        'sexe'       => 'nullable|in:M,F',
+                        'age'        => 'nullable|integer|min:0|max:150',
+                        'nationalite' => 'nullable|string|max:100',
+                    ]);
+                    if ($victimeValidator->fails()) {
+                        \Illuminate\Support\Facades\Log::warning('SyncController: victime ignorée (accident)', ['errors' => $victimeValidator->errors()->toArray(), 'local_id' => $localId]);
+                        continue;
+                    }
                     Victime::create($v);
                 }
                 DB::statement('RELEASE SAVEPOINT sp_victimes_acc_' . $record->id);

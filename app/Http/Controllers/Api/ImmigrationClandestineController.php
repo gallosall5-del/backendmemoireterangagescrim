@@ -99,7 +99,7 @@ class ImmigrationClandestineController extends ApiController
             );
         }
 
-        $data = $request->all();
+        $data = $validator->validated();
         $data['user_id'] = auth()->id();
         $immigration = ImmigrationClandestine::create($data);
         return $this->successResponse($immigration->load('service'), 'Enregistré avec succès.', 201);

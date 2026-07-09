@@ -33,6 +33,7 @@ class AmendePieceSaisieController extends ApiController
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:Amende,Pièce saisie',
             'service_id' => 'required|exists:services,id',
+            'commune_id' => 'nullable|exists:communes,id',
             'date' => 'required|date',
             'heure' => 'nullable|date_format:H:i',
             'montant' => 'required|numeric|min:0',
@@ -40,7 +41,7 @@ class AmendePieceSaisieController extends ApiController
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $data = $request->only(['type', 'service_id', 'date', 'heure', 'lieu', 'montant', 'description', 'plaque_immatriculation', 'local_id', 'workflow_status']);
+        $data = $request->only(['type', 'service_id', 'commune_id', 'date', 'heure', 'lieu', 'montant', 'description', 'plaque_immatriculation', 'local_id', 'workflow_status']);
         $data['user_id'] = auth()->id();
         $amende = AmendePieceSaisie::create($data);
         return $this->successResponse($amende->load('service'), 'Enregistré avec succès.', 201);

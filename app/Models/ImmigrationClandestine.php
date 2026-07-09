@@ -49,6 +49,11 @@ class ImmigrationClandestine extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'mediable');
+    }
+
     // ========== Scopes ==========
 
     public function scopeByService($query, $serviceId)

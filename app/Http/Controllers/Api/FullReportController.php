@@ -85,7 +85,7 @@ class FullReportController extends ApiController
 
         $personnel = Personnel::with(['service'])->visibleByUser()->get();
 
-        $victimes = Victime::visibleByUser()->get();
+        $victimes = Victime::with(['infraction', 'accident'])->visibleByUser()->get();
 
         $amendes = $this->queryWithDateRange(
             AmendePieceSaisie::with(['service'])->visibleByUser(),

@@ -105,7 +105,7 @@ class VictimeController extends ApiController
             }
         }
 
-        $victime = Victime::create($request->all());
+        $victime = Victime::create($validator->validated());
 
         return $this->successResponse($victime, 'Victime enregistrée avec succès.', 201);
     }
@@ -138,7 +138,7 @@ class VictimeController extends ApiController
             return $this->errorResponse('La victime doit rester liée à une infraction ou un accident.', 422);
         }
 
-        $victime->update($request->all());
+        $victime->update($validator->validated());
 
         return $this->successResponse($victime, 'Victime mise à jour avec succès.');
     }

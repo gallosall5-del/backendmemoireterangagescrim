@@ -228,6 +228,21 @@ class AuthController extends ApiController
             return $this->errorResponse('Utilisateur introuvable.', 404);
         }
 
+        // Vérifier que le device_id de l'étape 2 correspond à celui capturé à l'étape 1
+        $currentDeviceId = $request->header('X-Device-Id') ?? '';
+        if (empty($currentDeviceId) || $currentDeviceId !== ($ticketData['device_id'] ?? '')) {
+            AuditLog::create([
+                'user_id'    => $user->id,
+                'action'     => '2fa_device_mismatch',
+                'model_type' => User::class,
+                'model_id'   => $user->id,
+                'new_values' => ['ticket_device' => $ticketData['device_id'] ?? null],
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('Appareil non reconnu. Recommencez la connexion.', 401, ['code' => 'DEVICE_MISMATCH']);
+        }
+
         // Compteur d'échecs OTP (5 max en 10 min)
         $otpFailKey = "2fa_fails:{$user->id}";
         $otpFails   = (int) Cache::get($otpFailKey, 0);

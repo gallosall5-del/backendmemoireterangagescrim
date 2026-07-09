@@ -299,7 +299,7 @@ class DashboardController extends ApiController
             ]);
         } catch (\Throwable $e) {
             \Log::error('tendancesMensuelles error: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
-            return $this->successResponse(['infractions' => [], 'accidents' => [], 'immigration' => [], 'debug_error' => $e->getMessage()]);
+            return $this->successResponse(['infractions' => [], 'accidents' => [], 'immigration' => []]);
         }
     }
 

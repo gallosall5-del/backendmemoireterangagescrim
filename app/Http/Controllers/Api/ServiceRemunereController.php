@@ -32,6 +32,7 @@ class ServiceRemunereController extends ApiController
         $validator = Validator::make($request->all(), [
             'libelle' => 'required|string|max:255',
             'service_id' => 'required|exists:services,id',
+            'commune_id' => 'nullable|exists:communes,id',
             'date' => 'required|date',
             'heure' => 'nullable|date_format:H:i',
             'montant' => 'required|numeric|min:0',
@@ -39,7 +40,7 @@ class ServiceRemunereController extends ApiController
         ]);
         if ($validator->fails()) return $this->errorResponse('Erreur de validation', 422, $validator->errors());
 
-        $data = $request->only(['libelle', 'service_id', 'date', 'heure', 'montant', 'description', 'local_id', 'workflow_status']);
+        $data = $request->only(['libelle', 'service_id', 'commune_id', 'date', 'heure', 'montant', 'description', 'local_id', 'workflow_status']);
         $data['user_id'] = auth()->id();
         $sr = ServiceRemunere::create($data);
         return $this->successResponse($sr->load('service'), 'Service rémunéré enregistré.', 201);

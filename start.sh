@@ -7,6 +7,7 @@ php --version >&2
 echo "--- fix storage permissions ---" >&2
 mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/storage/fonts /app/bootstrap/cache
 chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
+php /app/artisan storage:link --force 2>&1 || true
 
 echo "--- starting PHP server on :${PORT:-8000} (background) ---" >&2
 php -d memory_limit=512M -d max_execution_time=60 -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
@@ -107,6 +108,10 @@ php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_en
 
 echo "--- caching config ---" >&2
 rm -f /app/.env
+# Reconstruire APP_URL à partir du domaine Railway pour que les URLs /storage/... soient correctes
+if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    echo "APP_URL=https://${RAILWAY_PUBLIC_DOMAIN}" > /app/.env
+fi
 php /app/artisan config:clear 2>&1 || true
 php /app/artisan route:clear 2>&1 || true
 php /app/artisan view:clear 2>&1 || true

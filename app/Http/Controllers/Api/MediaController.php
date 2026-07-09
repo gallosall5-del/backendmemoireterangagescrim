@@ -7,6 +7,7 @@ use App\Models\Infraction;
 use App\Models\Accident;
 use App\Models\Personnel;
 use App\Models\Victime;
+use App\Models\ImmigrationClandestine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -26,10 +27,11 @@ class MediaController extends ApiController
     ];
 
     private const MODEL_MAP = [
-        'infractions' => Infraction::class,
-        'accidents'   => Accident::class,
-        'personnels'  => Personnel::class,
-        'victimes'    => Victime::class,
+        'infractions'              => Infraction::class,
+        'accidents'                => Accident::class,
+        'personnels'               => Personnel::class,
+        'victimes'                 => Victime::class,
+        'immigrations-clandestines' => ImmigrationClandestine::class,
     ];
 
     /**

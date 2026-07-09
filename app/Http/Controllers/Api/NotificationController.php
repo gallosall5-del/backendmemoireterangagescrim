@@ -317,7 +317,28 @@ class NotificationController extends ApiController
                         ->whereHas('commune', fn($q) => $q->where('departement_id', $writeScopeId))->exists()
                         ? null : 'Ce service n\'est pas dans votre département.',
 
-                    'user', 'users' => null,
+                    'user' => (function () use ($targetId, $writeScopeId) {
+                        $serviceIds = Service::whereHas('commune', fn($q) =>
+                            $q->where('departement_id', $writeScopeId))->pluck('id');
+                        return User::where('id', $targetId)
+                            ->where(fn($q) => $q
+                                ->where(fn($q2) => $q2->where('read_scope_type', 'departement')->where('read_scope_id', $writeScopeId))
+                                ->orWhereIn('service_id', $serviceIds)
+                            )->exists()
+                            ? null : 'Cet utilisateur n\'est pas dans votre département.';
+                    })(),
+
+                    'users' => (function () use ($targetIds, $writeScopeId) {
+                        $serviceIds = Service::whereHas('commune', fn($q) =>
+                            $q->where('departement_id', $writeScopeId))->pluck('id');
+                        $valid = User::whereIn('id', $targetIds)
+                            ->where(fn($q) => $q
+                                ->where(fn($q2) => $q2->where('read_scope_type', 'departement')->where('read_scope_id', $writeScopeId))
+                                ->orWhereIn('service_id', $serviceIds)
+                            )->pluck('id')->toArray();
+                        return count(array_diff($targetIds, $valid)) === 0
+                            ? null : 'Certains utilisateurs ne sont pas dans votre département.';
+                    })(),
 
                     default => 'Mode de diffusion non autorisé pour votre périmètre.',
                 };
@@ -331,7 +352,26 @@ class NotificationController extends ApiController
                         ->where('commune_id', $writeScopeId)->exists()
                         ? null : 'Ce service n\'est pas dans votre commune.',
 
-                    'user', 'users' => null,
+                    'user' => (function () use ($targetId, $writeScopeId) {
+                        $serviceIds = Service::where('commune_id', $writeScopeId)->pluck('id');
+                        return User::where('id', $targetId)
+                            ->where(fn($q) => $q
+                                ->where(fn($q2) => $q2->where('read_scope_type', 'commune')->where('read_scope_id', $writeScopeId))
+                                ->orWhereIn('service_id', $serviceIds)
+                            )->exists()
+                            ? null : 'Cet utilisateur n\'est pas dans votre commune.';
+                    })(),
+
+                    'users' => (function () use ($targetIds, $writeScopeId) {
+                        $serviceIds = Service::where('commune_id', $writeScopeId)->pluck('id');
+                        $valid = User::whereIn('id', $targetIds)
+                            ->where(fn($q) => $q
+                                ->where(fn($q2) => $q2->where('read_scope_type', 'commune')->where('read_scope_id', $writeScopeId))
+                                ->orWhereIn('service_id', $serviceIds)
+                            )->pluck('id')->toArray();
+                        return count(array_diff($targetIds, $valid)) === 0
+                            ? null : 'Certains utilisateurs ne sont pas dans votre commune.';
+                    })(),
 
                     default => 'Mode de diffusion non autorisé pour votre périmètre.',
                 };
