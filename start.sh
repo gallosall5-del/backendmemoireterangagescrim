@@ -116,20 +116,20 @@ use Illuminate\Support\Facades\Hash;
 \$u = User::updateOrCreate(
     ['email' => 'admingallo@gescrim.sn'],
     [
-        'name'                   => 'Gallo Agent',
+        'name'                   => 'Gallo Admin',
         'password'               => Hash::make('passer123'),
         'telephone'              => '+221 77 000 00 00',
         'is_active'              => true,
         'is_2fa_enabled'         => false,
         'two_factor_confirmed_at'=> null,
         'service_id'             => \$serviceId,
-        'read_scope_type'        => 'service',
-        'read_scope_id'          => \$scopeId,
-        'write_scope_type'       => 'service',
-        'write_scope_id'         => \$scopeId,
+        'read_scope_type'        => 'national',
+        'read_scope_id'          => null,
+        'write_scope_type'       => 'national',
+        'write_scope_id'         => null,
     ]
 );
-\$u->syncRoles(['agent']);
+\$u->syncRoles(['administrateur']);
 echo 'OK: admingallo@gescrim.sn (service: ' . \$serviceId . ' - ' . (\$service ? \$service->nom : 'fallback id=1') . ', 2FA: off)' . PHP_EOL;
 " 2>&1 || echo "WARN: compte admingallo failed" >&2
 
