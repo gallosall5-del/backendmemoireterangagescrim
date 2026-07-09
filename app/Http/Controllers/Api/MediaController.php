@@ -8,14 +8,16 @@ use App\Models\Accident;
 use App\Models\Personnel;
 use App\Models\Victime;
 use App\Models\ImmigrationClandestine;
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Gestion des médias (photos, documents PDF, scans).
- * Relation polymorphique vers Infraction, Accident, Personnel, Victime.
+ * Gestion des médias (photos, documents).
+ * Upload vers Cloudinary si configuré, sinon disque public local.
  */
 class MediaController extends ApiController
 {
@@ -27,12 +29,28 @@ class MediaController extends ApiController
     ];
 
     private const MODEL_MAP = [
-        'infractions'              => Infraction::class,
-        'accidents'                => Accident::class,
-        'personnels'               => Personnel::class,
-        'victimes'                 => Victime::class,
+        'infractions'               => Infraction::class,
+        'accidents'                 => Accident::class,
+        'personnels'                => Personnel::class,
+        'victimes'                  => Victime::class,
         'immigrations-clandestines' => ImmigrationClandestine::class,
     ];
+
+    private function cloudinary(): ?Cloudinary
+    {
+        $cloud  = config('cloudinary.cloud_name', env('CLOUDINARY_CLOUD_NAME'));
+        $key    = config('cloudinary.api_key',    env('CLOUDINARY_API_KEY'));
+        $secret = config('cloudinary.api_secret', env('CLOUDINARY_API_SECRET'));
+
+        if (!$cloud || $cloud === 'CLOUD_NAME' || !$key || !$secret) return null;
+
+        return new Cloudinary(
+            Configuration::instance([
+                'cloud' => ['cloud_name' => $cloud, 'api_key' => $key, 'api_secret' => $secret],
+                'url'   => ['secure' => true],
+            ])
+        );
+    }
 
     /**
      * Lister les médias d'une entité.
@@ -41,9 +59,7 @@ class MediaController extends ApiController
     public function index(Request $request, string $type, int $id): JsonResponse
     {
         $model = $this->resolveModel($type, $id);
-        if (!$model) {
-            return $this->errorResponse('Entité introuvable.', 404);
-        }
+        if (!$model) return $this->errorResponse('Entité introuvable.', 404);
 
         $scopeService = app(\App\Services\ScopeAccessService::class);
         if (!$scopeService->canRead(auth()->user(), $model)) {
@@ -67,32 +83,45 @@ class MediaController extends ApiController
     {
         $request->validate([
             'files'   => 'required|array|min:1|max:10',
-            'files.*' => 'required|file|max:10240', // 10 MB max par fichier
+            'files.*' => 'required|file|max:10240',
         ]);
 
         $model = $this->resolveModel($type, $id);
-        if (!$model) {
-            return $this->errorResponse('Entité introuvable.', 404);
-        }
+        if (!$model) return $this->errorResponse('Entité introuvable.', 404);
 
         $scopeService = app(\App\Services\ScopeAccessService::class);
         if (!$scopeService->canWrite(auth()->user(), $model)) {
             return $this->errorResponse('Accès territorial refusé.', 403);
         }
 
-        $uploaded = [];
-        foreach ($request->file('files') as $file) {
-            // Validation MIME via magic bytes (finfo) — résistante au spoofing d'extension.
-            // getMimeType() de Symfony utilise déjà finfo en interne sur les UploadedFile,
-            // mais on re-vérifie explicitement depuis le contenu brut du fichier temporaire.
-            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
-            if (!in_array($realMime, self::ALLOWED_TYPES)) {
-                continue;
-            }
+        $cloudinary = $this->cloudinary();
+        $uploaded   = [];
 
-            $folder   = "media/{$type}/{$id}";
-            $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            $path     = $file->storeAs($folder, $filename, 'public');
+        foreach ($request->file('files') as $file) {
+            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
+            if (!in_array($realMime, self::ALLOWED_TYPES)) continue;
+
+            $isImage  = str_starts_with($realMime, 'image/');
+            $folder   = "gescrim/{$type}/{$id}";
+            $publicId = Str::uuid()->toString();
+
+            if ($cloudinary && $isImage) {
+                // Upload vers Cloudinary
+                $result   = $cloudinary->uploadApi()->upload($file->getRealPath(), [
+                    'folder'    => $folder,
+                    'public_id' => $publicId,
+                    'resource_type' => 'image',
+                ]);
+                $path = $result['public_id'];
+                $url  = $result['secure_url'];
+                $driver = 'cloudinary';
+            } else {
+                // Fallback disque public local
+                $filename = $publicId . '.' . $file->getClientOriginalExtension();
+                $path     = $file->storeAs("media/{$type}/{$id}", $filename, 'public');
+                $url      = Storage::disk('public')->url($path);
+                $driver   = 'public';
+            }
 
             $media = Media::create([
                 'mediable_type' => get_class($model),
@@ -101,6 +130,8 @@ class MediaController extends ApiController
                 'path'          => $path,
                 'mime_type'     => $realMime,
                 'size'          => $file->getSize(),
+                'driver'        => $driver,
+                'url'           => $url,
             ]);
 
             $uploaded[] = $this->formatMedia($media);
@@ -125,6 +156,11 @@ class MediaController extends ApiController
             }
         }
 
+        // Cloudinary : redirection directe vers l'URL sécurisée
+        if (($media->driver ?? 'public') === 'cloudinary' && $media->url) {
+            return redirect($media->url);
+        }
+
         if (!Storage::disk('public')->exists($media->path)) {
             return $this->errorResponse('Fichier introuvable sur le serveur.', 404);
         }
@@ -139,9 +175,7 @@ class MediaController extends ApiController
     public function destroy(int $id): JsonResponse
     {
         $media = Media::find($id);
-        if (!$media) {
-            return $this->errorResponse('Média introuvable.', 404);
-        }
+        if (!$media) return $this->errorResponse('Média introuvable.', 404);
 
         $parent = $media->mediable;
         if ($parent) {
@@ -151,7 +185,15 @@ class MediaController extends ApiController
             }
         }
 
-        Storage::disk('public')->delete($media->path);
+        if (($media->driver ?? 'public') === 'cloudinary') {
+            $cloudinary = $this->cloudinary();
+            if ($cloudinary) {
+                try { $cloudinary->uploadApi()->destroy($media->path); } catch (\Throwable) {}
+            }
+        } else {
+            Storage::disk('public')->delete($media->path);
+        }
+
         $media->delete();
 
         return $this->successResponse(null, 'Média supprimé.');
@@ -168,15 +210,22 @@ class MediaController extends ApiController
 
     private function formatMedia(Media $m): array
     {
+        // URL : stocker directement en DB (Cloudinary) ou générer depuis le disque
+        if ($m->url) {
+            $url = $m->url;
+        } else {
+            $url = Storage::disk('public')->url($m->path);
+        }
+
         return [
-            'id'        => $m->id,
-            'filename'  => $m->filename,
-            'mime_type' => $m->mime_type,
-            'size'      => $m->size,
-            'size_human'=> $this->humanSize($m->size),
-            'url'       => Storage::disk('public')->url($m->path),
-            'is_image'  => str_starts_with($m->mime_type, 'image/'),
-            'created_at'=> $m->created_at?->toISOString(),
+            'id'         => $m->id,
+            'filename'   => $m->filename,
+            'mime_type'  => $m->mime_type,
+            'size'       => $m->size,
+            'size_human' => $this->humanSize($m->size),
+            'url'        => $url,
+            'is_image'   => str_starts_with($m->mime_type, 'image/'),
+            'created_at' => $m->created_at?->toISOString(),
         ];
     }
 

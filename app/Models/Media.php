@@ -13,7 +13,7 @@ class Media extends Model
     protected $table = 'media';
 
     protected $fillable = [
-        'mediable_type', 'mediable_id', 'filename', 'path', 'mime_type', 'size',
+        'mediable_type', 'mediable_id', 'filename', 'path', 'mime_type', 'size', 'driver', 'url',
     ];
 
     // Relation polymorphique
