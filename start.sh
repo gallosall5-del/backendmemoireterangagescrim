@@ -102,8 +102,36 @@ foreach (\$accounts as \$a) {
 echo "--- syncing role permissions ---" >&2
 php /app/artisan db:seed --class=RolePermissionSeeder --force 2>&1 || echo "WARN: RolePermissionSeeder failed" >&2
 
-echo "--- enabling 2FA for all users ---" >&2
-php /app/artisan tinker --execute="\App\Models\User::query()->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
+echo "--- enabling 2FA for all users (sauf compte demo soutenance) ---" >&2
+php /app/artisan tinker --execute="\App\Models\User::where('email', '!=', 'admingallo@gescrim.sn')->update(['is_2fa_enabled' => true, 'two_factor_confirmed_at' => now()]);" 2>&1 || echo "WARN: 2FA enable failed" >&2
+
+echo "--- ensure compte demo soutenance (admingallo@gescrim.sn, sans 2FA) ---" >&2
+php /app/artisan tinker --execute="
+use App\Models\User;
+use App\Models\Service;
+use Illuminate\Support\Facades\Hash;
+\$service = Service::where('nom', 'like', '%Golf Sud%')->first();
+\$serviceId = \$service ? \$service->id : 1;
+\$scopeId   = \$service ? \$service->id : 1;
+\$u = User::updateOrCreate(
+    ['email' => 'admingallo@gescrim.sn'],
+    [
+        'name'                   => 'Gallo Agent',
+        'password'               => Hash::make('passer123'),
+        'telephone'              => '+221 77 000 00 00',
+        'is_active'              => true,
+        'is_2fa_enabled'         => false,
+        'two_factor_confirmed_at'=> null,
+        'service_id'             => \$serviceId,
+        'read_scope_type'        => 'service',
+        'read_scope_id'          => \$scopeId,
+        'write_scope_type'       => 'service',
+        'write_scope_id'         => \$scopeId,
+    ]
+);
+\$u->syncRoles(['agent']);
+echo 'OK: admingallo@gescrim.sn (service: ' . \$serviceId . ' - ' . (\$service ? \$service->nom : 'fallback id=1') . ', 2FA: off)' . PHP_EOL;
+" 2>&1 || echo "WARN: compte admingallo failed" >&2
 
 
 echo "--- caching config ---" >&2
