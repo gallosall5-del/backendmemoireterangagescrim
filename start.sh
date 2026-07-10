@@ -6,6 +6,11 @@ php --version >&2
 
 echo "--- fix storage permissions ---" >&2
 mkdir -p /app/storage/framework/cache/data /app/storage/framework/sessions /app/storage/framework/views /app/storage/logs /app/storage/fonts /app/bootstrap/cache
+mkdir -p /app/storage/app/public/media
+if [ -d /app/storage/app/public/pgdata ]; then
+    echo "  Cleaning up stale PostgreSQL data from volume..." >&2
+    rm -rf /app/storage/app/public/pgdata /app/storage/app/public/pg_* /app/storage/app/public/PG_VERSION /app/storage/app/public/base /app/storage/app/public/global /app/storage/app/public/postgresql* 2>/dev/null || true
+fi
 chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
 php /app/artisan storage:link --force 2>&1 || true
 
