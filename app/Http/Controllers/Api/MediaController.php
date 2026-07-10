@@ -38,9 +38,9 @@ class MediaController extends ApiController
 
     private function cloudinary(): ?Cloudinary
     {
-        $cloud  = config('cloudinary.cloud_name', env('CLOUDINARY_CLOUD_NAME'));
-        $key    = config('cloudinary.api_key',    env('CLOUDINARY_API_KEY'));
-        $secret = config('cloudinary.api_secret', env('CLOUDINARY_API_SECRET'));
+        $cloud  = config('cloudinary.cloud_name');
+        $key    = config('cloudinary.api_key');
+        $secret = config('cloudinary.api_secret');
 
         if (!$cloud || $cloud === 'CLOUD_NAME' || !$key || !$secret) return null;
 
