@@ -8,6 +8,7 @@ class HealthController extends ApiController
 {
     public function index(): JsonResponse
     {
-        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => 'e9685d2']);
+        $hash = env('RAILWAY_GIT_COMMIT_SHA', 'unknown');
+        return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString(), 'build' => substr($hash, 0, 7)]);
     }
 }
