@@ -14,6 +14,12 @@ fi
 chmod -R 777 /app/storage /app/bootstrap/cache 2>/dev/null || true
 php /app/artisan storage:link --force 2>&1 || true
 
+echo "--- setting APP_URL ---" >&2
+if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    export APP_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+    echo "  APP_URL=${APP_URL}" >&2
+fi
+
 echo "--- starting PHP server on :${PORT:-8000} (background) ---" >&2
 php -d memory_limit=512M -d max_execution_time=60 -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
 PHP_PID=$!
@@ -140,16 +146,10 @@ echo 'OK: admingallo@gescrim.sn (service: ' . \$serviceId . ' - ' . (\$service ?
 
 
 echo "--- caching config ---" >&2
-rm -f /app/.env
-# Reconstruire APP_URL à partir du domaine Railway pour que les URLs /storage/... soient correctes
-if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
-    echo "APP_URL=https://${RAILWAY_PUBLIC_DOMAIN}" > /app/.env
-fi
 php /app/artisan config:clear 2>&1 || true
 php /app/artisan route:clear 2>&1 || true
 php /app/artisan view:clear 2>&1 || true
 php /app/artisan config:cache 2>&1 || echo "WARN: config:cache failed" >&2
-# route:cache désactivé — incompatible avec certaines routes (closures dans les groups)
 php /app/artisan view:cache 2>&1 || echo "WARN: view:cache failed" >&2
 
 echo "--- init complete, PHP server already running (PID $PHP_PID) ---" >&2

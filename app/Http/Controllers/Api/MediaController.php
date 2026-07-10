@@ -210,8 +210,7 @@ class MediaController extends ApiController
 
     private function formatMedia(Media $m): array
     {
-        // URL : stocker directement en DB (Cloudinary) ou générer depuis le disque
-        if ($m->url) {
+        if (($m->driver ?? 'public') === 'cloudinary' && $m->url) {
             $url = $m->url;
         } else {
             $url = Storage::disk('public')->url($m->path);
