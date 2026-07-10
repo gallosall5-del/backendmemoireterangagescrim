@@ -21,7 +21,7 @@ if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
 fi
 
 echo "--- starting PHP server on :${PORT:-8000} (background) ---" >&2
-php -d memory_limit=512M -d max_execution_time=60 -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/index.php &
+php -d memory_limit=512M -d max_execution_time=60 -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/router.php &
 PHP_PID=$!
 
 # Wait for database to be reachable (max 60s)
