@@ -167,8 +167,8 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     Route::delete('amendes-pieces-saisies/{amendePieceSaisie}', [AmendePieceSaisieController::class, 'destroy'])->middleware('permission:amendes.delete');
 
     // --- Immigrations clandestines ---
-    Route::get('immigrations-clandestines/{id}/media', [MediaController::class, 'index']);
-    Route::post('immigrations-clandestines/{id}/media', [MediaController::class, 'store']);
+    Route::get('immigrations-clandestines/{id}/media', fn(\Illuminate\Http\Request $r, $id) => app(MediaController::class)->index($r, 'immigrations-clandestines', $id));
+    Route::post('immigrations-clandestines/{id}/media', fn(\Illuminate\Http\Request $r, $id) => app(MediaController::class)->store($r, 'immigrations-clandestines', $id));
     Route::get('immigrations-clandestines', [ImmigrationClandestineController::class, 'index'])->middleware('permission:immigrations.view');
     Route::get('immigrations-clandestines/{immigrationClandestine}', [ImmigrationClandestineController::class, 'show'])->middleware('permission:immigrations.view');
     Route::post('immigrations-clandestines', [ImmigrationClandestineController::class, 'store'])->middleware('permission:immigrations.create');
