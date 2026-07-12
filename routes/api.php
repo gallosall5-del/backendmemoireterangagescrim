@@ -247,6 +247,9 @@ Route::middleware(['auth:api', 'verify.device', 'mobile.agent_only'])->group(fun
     // Téléchargement / suppression en premier pour éviter l'ambiguïté avec /{type}/{id}/media
     Route::get('/media/{id}/download', [MediaController::class, 'download']);
     Route::delete('/media/{id}', [MediaController::class, 'destroy']);
+    // Routes explicites pour immigrations-clandestines (tiret empêche le match de la regex générique)
+    Route::get('/immigrations-clandestines/{id}/media', [MediaController::class, 'index']);
+    Route::post('/immigrations-clandestines/{id}/media', [MediaController::class, 'store']);
     // Upload / liste : POST|GET /api/{type}/{id}/media   (type = infractions|accidents|personnels|victimes)
     Route::get('/{type}/{id}/media', [MediaController::class, 'index'])
         ->where('type', 'infractions|accidents|personnels|victimes');
