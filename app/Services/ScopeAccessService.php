@@ -300,30 +300,29 @@ class ScopeAccessService
      */
     protected function extractCommuneId(Model $model): ?int
     {
-        if (isset($model->commune_id)) return $model->commune_id;
-        
-        // Cas des victimes, etc.
-        if (isset($model->infraction_id) && $model->infraction) {
+        if (array_key_exists('commune_id', $model->getAttributes())) return $model->commune_id;
+
+        if (array_key_exists('infraction_id', $model->getAttributes()) && $model->infraction) {
             return $model->infraction->commune_id;
         }
-        if (isset($model->accident_id) && $model->accident) {
+        if (array_key_exists('accident_id', $model->getAttributes()) && $model->accident) {
             return $model->accident->commune_id;
         }
-        
+
         return null;
     }
 
     protected function extractServiceId(Model $model): ?int
     {
-        if (isset($model->service_id)) return $model->service_id;
-        
-        if (isset($model->infraction_id) && $model->infraction) {
+        if (array_key_exists('service_id', $model->getAttributes())) return $model->service_id;
+
+        if (array_key_exists('infraction_id', $model->getAttributes()) && $model->infraction) {
             return $model->infraction->service_id;
         }
-        if (isset($model->accident_id) && $model->accident) {
+        if (array_key_exists('accident_id', $model->getAttributes()) && $model->accident) {
             return $model->accident->service_id;
         }
-        
+
         return null;
     }
 }
