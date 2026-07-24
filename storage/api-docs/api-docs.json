@@ -286,9 +286,39 @@
                 ],
                 "summary": "Connexion utilisateur (étape 1)",
                 "operationId": "be2e78e5f93182d4403f839cc516d312",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@gescrim.sn"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password"
+                                    },
+                                    "device_id": {
+                                        "type": "string",
+                                        "example": "test-device-001"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Succès"
+                        "description": "Succès — retourne access_token ou requires_2fa"
                     },
                     "401": {
                         "description": "Identifiants incorrects"

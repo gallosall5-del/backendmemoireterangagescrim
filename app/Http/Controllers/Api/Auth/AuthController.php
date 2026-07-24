@@ -40,8 +40,19 @@ class AuthController extends ApiController
         path: "/api/auth/login",
         summary: "Connexion utilisateur (étape 1)",
         tags: ["Authentification"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["email", "password"],
+                properties: [
+                    new OA\Property(property: "email", type: "string", format: "email", example: "admin@gescrim.sn"),
+                    new OA\Property(property: "password", type: "string", format: "password", example: "password"),
+                    new OA\Property(property: "device_id", type: "string", example: "test-device-001"),
+                ]
+            )
+        ),
         responses: [
-            new OA\Response(response: 200, description: "Succès"),
+            new OA\Response(response: 200, description: "Succès — retourne access_token ou requires_2fa"),
             new OA\Response(response: 401, description: "Identifiants incorrects"),
             new OA\Response(response: 422, description: "Erreur de validation"),
         ]
