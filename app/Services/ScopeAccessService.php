@@ -36,6 +36,10 @@ class ScopeAccessService
      */
     protected function hasAccess(User $user, Model $model, string $action): bool
     {
+        if ($user->hasRole('administrateur')) {
+            return true;
+        }
+
         $scopeType = $action === 'write' ? $user->write_scope_type : $user->read_scope_type;
         $scopeId = $action === 'write' ? $user->write_scope_id : $user->read_scope_id;
 
@@ -67,6 +71,10 @@ class ScopeAccessService
      */
     public function canAccessCommune(User $user, int $communeId, string $action = 'write'): bool
     {
+        if ($user->hasRole('administrateur')) {
+            return true;
+        }
+
         $scopeType = $action === 'write' ? $user->write_scope_type : $user->read_scope_type;
         $scopeId = $action === 'write' ? $user->write_scope_id : $user->read_scope_id;
 
@@ -109,6 +117,10 @@ class ScopeAccessService
      */
     public function canAccessService(User $user, int $serviceId, string $action = 'write'): bool
     {
+        if ($user->hasRole('administrateur')) {
+            return true;
+        }
+
         $scopeType = $action === 'write' ? $user->write_scope_type : $user->read_scope_type;
         $scopeId = $action === 'write' ? $user->write_scope_id : $user->read_scope_id;
 
@@ -170,6 +182,9 @@ class ScopeAccessService
      */
     public function applyReadScope(Builder $query, User $user): Builder
     {
+        if ($user->hasRole('administrateur')) {
+            return $query;
+        }
         return $this->applyScope($query, $user->read_scope_type, $user->read_scope_id);
     }
 
@@ -178,6 +193,9 @@ class ScopeAccessService
      */
     public function applyWriteScope(Builder $query, User $user): Builder
     {
+        if ($user->hasRole('administrateur')) {
+            return $query;
+        }
         return $this->applyScope($query, $user->write_scope_type, $user->write_scope_id);
     }
 
