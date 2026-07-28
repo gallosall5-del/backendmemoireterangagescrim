@@ -129,12 +129,17 @@ class UserController extends ApiController
             return $user;
         });
 
-        Mail::to($user->email)->send(new WelcomeMail(
-            userName:      $user->name,
-            userEmail:     $user->email,
-            plainPassword: $plainPassword,
-            role:          $request->role,
-        ));
+        $emailSent = true;
+        try {
+            Mail::to($user->email)->send(new WelcomeMail(
+                userName:      $user->name,
+                userEmail:     $user->email,
+                plainPassword: $plainPassword,
+                role:          $request->role,
+            ));
+        } catch (\Exception $e) {
+            $emailSent = false;
+        }
 
         AuditLog::create([
             'user_id'    => auth()->id(),
@@ -146,7 +151,15 @@ class UserController extends ApiController
             'user_agent' => request()->userAgent(),
         ]);
 
-        return $this->successResponse($user->load(['service', 'roles']), 'Utilisateur créé. Les identifiants ont été envoyés par email.', 201);
+        $userData = $user->load(['service', 'roles'])->toArray();
+        if (!$emailSent) {
+            $userData['temp_password'] = $plainPassword;
+        }
+        $message = $emailSent
+            ? 'Utilisateur créé. Les identifiants ont été envoyés par email.'
+            : 'Utilisateur créé. Email non envoyé — mot de passe temporaire inclus dans la réponse.';
+
+        return $this->successResponse($userData, $message, 201);
     }
 
     public function update(Request $request, User $user): JsonResponse
