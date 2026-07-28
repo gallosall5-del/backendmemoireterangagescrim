@@ -114,16 +114,18 @@ class UserController extends ApiController
 
         $user = DB::transaction(function () use ($request, $plainPassword) {
             $user = User::create([
-                'name'             => $request->name,
-                'email'            => $request->email,
-                'password'         => Hash::make($plainPassword),
-                'telephone'        => $request->telephone,
-                'service_id'       => $request->service_id,
-                'is_active'        => $request->get('is_active', true),
-                'read_scope_type'  => $request->read_scope_type,
-                'read_scope_id'    => $request->read_scope_id,
-                'write_scope_type' => $request->write_scope_type,
-                'write_scope_id'   => $request->write_scope_id,
+                'name'                    => $request->name,
+                'email'                   => $request->email,
+                'password'                => Hash::make($plainPassword),
+                'telephone'               => $request->telephone,
+                'service_id'              => $request->service_id,
+                'is_active'               => $request->get('is_active', true),
+                'is_2fa_enabled'          => true,
+                'two_factor_confirmed_at' => now(),
+                'read_scope_type'         => $request->read_scope_type,
+                'read_scope_id'           => $request->read_scope_id,
+                'write_scope_type'        => $request->write_scope_type,
+                'write_scope_id'          => $request->write_scope_id,
             ]);
             $user->assignRole($request->role);
             return $user;
