@@ -149,7 +149,7 @@ echo "--- caching config ---" >&2
 php /app/artisan config:clear 2>&1 || true
 php /app/artisan route:clear 2>&1 || true
 php /app/artisan view:clear 2>&1 || true
-php /app/artisan config:cache 2>&1 || echo "WARN: config:cache failed" >&2
+# Ne pas faire config:cache — laisser Laravel lire les variables Railway directement
 php /app/artisan view:cache 2>&1 || echo "WARN: view:cache failed" >&2
 
 echo "--- init complete, PHP server already running (PID $PHP_PID) ---" >&2
